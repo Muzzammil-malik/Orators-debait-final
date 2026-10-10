@@ -1,16 +1,16 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLenis } from "@/hooks/useLenis";
-import { cinematicEase, motionTiming } from "@/lib/motion";
+import { cinematicEase } from "@/lib/motion";
 import { ParticleWordmark } from "./ParticleWordmark";
 
 const introSessionKey = "debait-2026-intro-seen";
 const introTimeline = {
-  atmosphere: 120,
-  formation: 100,
-  formed: 650,
-  handoff: 1050,
-  complete: motionTiming.intro * 1000,
+  atmosphere: 400,
+  formation: 500,
+  formed: 1900,
+  handoff: 2750,
+  complete: 3100,
 } as const;
 
 function hasSeenIntro() {
@@ -129,7 +129,7 @@ export function OpeningSequence({ onComplete, onReveal }: OpeningSequenceProps) 
             transition={{ duration: 0.65, ease: cinematicEase }}
             className="grain-dark absolute inset-0"
           />
-          <ParticleWordmark formationDelay={introTimeline.formation} formationDuration={500} />
+          <ParticleWordmark formationDelay={introTimeline.formation} formationDuration={950} />
 
           <div className="relative z-10 flex h-full flex-col justify-between px-5 py-6 md:px-10 md:py-9">
             <motion.div

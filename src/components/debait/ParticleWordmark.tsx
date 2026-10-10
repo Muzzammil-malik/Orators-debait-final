@@ -33,6 +33,7 @@ export function ParticleWordmark({
 
     let particles: Particle[] = [];
     let frame = 0;
+    let lastDraw = 0;
     let width = 0;
     let height = 0;
     let ratio = 1;
@@ -84,6 +85,11 @@ export function ParticleWordmark({
     };
 
     const draw = (now: number) => {
+      if (now - lastDraw < 1000 / 30) {
+        frame = requestAnimationFrame(draw);
+        return;
+      }
+      lastDraw = now;
       const elapsed = now - start;
       const progress = Math.max(0, Math.min(1, (elapsed - formationDelay) / formationDuration));
       const arrival = 1 - Math.pow(1 - progress, 3);

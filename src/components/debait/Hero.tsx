@@ -165,12 +165,12 @@ export function Hero({ introReady = true }: HeroProps) {
           alt=""
           aria-hidden="true"
           style={{ y: imageY, scale: imageScale }}
-          className="h-[114%] w-full scale-105 object-cover object-center opacity-45 saturate-[0.88] contrast-[1.14] md:opacity-55"
+          className="h-[114%] w-full scale-105 object-cover object-center opacity-80 saturate-[0.88] contrast-[1.14] md:opacity-[0.62]"
         />
 
         {/* Cinematic Vignette and Dark Edges to preserve text readability */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_45%,transparent_20%,rgba(5,5,5,0.72)_70%,rgba(5,5,5,0.96)_100%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(5,5,5,0.45)_0%,transparent_35%,rgba(5,5,5,0.75)_75%,rgba(5,5,5,0.98)_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(5,5,5,0.45)_0%,transparent_35%,rgba(5,5,5,0.75)_75%,rgba(5,5,5,0.98)_100%)] opacity-75 md:opacity-100" />
 
         {/* Optimized GPU-composited stage lighting beams */}
         <motion.div

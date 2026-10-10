@@ -8,7 +8,7 @@ export const motionTiming = {
   standard: 0.45,
   slow: 0.8,
   chapter: 1.1,
-  intro: 7.4,
+  intro: 1.6,
 } as const;
 
 export const revealUp = {

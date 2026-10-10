@@ -50,7 +50,7 @@ function ScoreboardPage() {
   } = useTournament();
 
   return (
-    <main className="scoreboard-site min-h-screen overflow-x-hidden bg-canvas text-mist selection:bg-hot selection:text-paper">
+    <main className="scoreboard-site min-h-screen bg-canvas text-mist selection:bg-hot selection:text-paper">
       {/* 1. COMPACT SCOREBOARD SPECIFIC HEADER */}
       <ScoreboardHeader hasLiveMatch={liveMatches.length > 0} />
 

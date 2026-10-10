@@ -4,24 +4,6 @@
 export type ScheduleItem = { time: string; title: string };
 export type ScheduleDay = { label: string; date: string; items: ScheduleItem[] };
 
-export type TeamStatus = "registered" | "qualified" | "eliminated" | "champion";
-export interface Team {
-  number: number;
-  name?: string;
-  members?: string[];
-  status?: TeamStatus;
-  currentRound?: string;
-}
-
-export interface LiveMatch {
-  round: string;
-  motion: string;
-  proposition: { name: string; score: number };
-  opposition: { name: string; score: number };
-  zone: 1 | 2 | 3;
-  votes: { proposition: number; opposition: number };
-}
-
 export const event = {
   name: "DE'BAIT",
   organizer: "Orators' Club",
@@ -166,20 +148,3 @@ export const rules = [
     body: "Each round is fought on a pre-announced motion: Proposition argues For, Opposition Against. Teams stay on their assigned side. Interruptions, personal remarks or unparliamentary language may lead to disqualification.",
   },
 ];
-
-// No official team data yet — slots render as open until real data is supplied.
-export const teams: Team[] = Array.from({ length: 16 }, (_, i) => ({ number: i + 1 }));
-
-// Live match data stays null until a backend is connected.
-export const liveMatch: LiveMatch | null = null;
-
-// Illustrative values for the design preview only. Never shown as real data.
-export const previewMatch: LiveMatch = {
-  round: "Semifinal 01",
-  motion:
-    "This house believes digital connectivity has reduced human empathy in younger generations.",
-  proposition: { name: "Team 09", score: 87 },
-  opposition: { name: "Team 14", score: 85 },
-  zone: 2,
-  votes: { proposition: 64, opposition: 36 },
-};

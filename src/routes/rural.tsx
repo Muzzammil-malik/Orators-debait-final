@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { AdminAuthService, type AdminSession } from "@/lib/admin-api";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { AdminLogin } from "@/components/admin/AdminLogin";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 
@@ -15,30 +16,59 @@ export const Route = createFileRoute("/rural")({
 });
 
 function RuralAdminRoute() {
-  const [session, setSession] = useState<AdminSession | null>(() => AdminAuthService.getSession());
+  const [session, setSession] = useState<AdminSession | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
-    const handleAuthChange = () => {
-      setSession(AdminAuthService.getSession());
-    };
+    if (!isSupabaseConfigured || !supabase) {
+      setCheckingSession(false);
+      return;
+    }
 
-    window.addEventListener("rural-auth-change", handleAuthChange);
-    window.addEventListener("storage", handleAuthChange);
+    let mounted = true;
+    void AdminAuthService.getAdminSession()
+      .then((adminSession) => {
+        if (mounted) setSession(adminSession);
+      })
+      .finally(() => {
+        if (mounted) setCheckingSession(false);
+      });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, authSession) => {
+      if (!authSession) {
+        setSession(null);
+        return;
+      }
+      window.setTimeout(() => {
+        void AdminAuthService.getAdminSession().then((adminSession) => {
+          if (mounted) setSession(adminSession);
+        });
+      }, 0);
+    });
+
     return () => {
-      window.removeEventListener("rural-auth-change", handleAuthChange);
-      window.removeEventListener("storage", handleAuthChange);
+      mounted = false;
+      subscription.unsubscribe();
     };
   }, []);
 
-  const handleLoginSuccess = () => {
-    setSession(AdminAuthService.getSession());
+  const handleLoginSuccess = async () => {
+    setSession(await AdminAuthService.getAdminSession());
   };
 
-  const handleLogout = () => {
-    AdminAuthService.logout();
-    setSession(null);
+  const handleLogout = async () => {
+    await AdminAuthService.logout();
   };
 
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-canvas font-type text-xs uppercase text-mist/70">
+        Checking operator session…
+      </div>
+    );
+  }
   if (!session) {
     return <AdminLogin onSuccess={handleLoginSuccess} />;
   }

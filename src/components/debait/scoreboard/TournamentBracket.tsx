@@ -73,7 +73,7 @@ export function TournamentBracket({
           {[
             { id: "prelims", label: "Preliminaries", count: 8 },
             { id: "sf", label: "Semifinals (Final 4)", count: 2 },
-            { id: "final", label: "Championship Final", count: 1 },
+            { id: "final", label: "Championship Final", count: final ? 1 : 0 },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -230,18 +230,22 @@ export function TournamentBracket({
 
               {/* Column 3: Center Grand Final & Champion Trophy */}
               <div className="relative z-10 flex flex-col items-center justify-center gap-3 py-3">
-                <ChampionNode champion={champion} finalCompleted={final.status === "completed"} />
-                <div className="w-full max-w-sm">
-                  <BracketMatchCard
-                    match={final}
-                    isFinal
-                    isSelected={selectedMatchId === final.id}
-                    hoveredTeamId={hoveredTeamId}
-                    onHoverTeam={setHoveredTeamId}
-                    onSelect={() => onSelectMatch(final.id)}
-                    onOpenModal={() => onOpenMatchModal(final.id)}
-                  />
-                </div>
+                {final && (
+                  <>
+                    <ChampionNode champion={champion} finalCompleted={final.status === "completed"} />
+                    <div className="w-full max-w-sm">
+                      <BracketMatchCard
+                        match={final}
+                        isFinal
+                        isSelected={selectedMatchId === final.id}
+                        hoveredTeamId={hoveredTeamId}
+                        onHoverTeam={setHoveredTeamId}
+                        onSelect={() => onSelectMatch(final.id)}
+                        onOpenModal={() => onOpenMatchModal(final.id)}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Column 4: Semifinal Right (SF 2) */}
@@ -346,18 +350,22 @@ export function TournamentBracket({
 
           {mobileStage === "final" && (
             <div className="space-y-6">
-              <ChampionNode champion={champion} finalCompleted={final.status === "completed"} />
-              <div className="max-w-md mx-auto">
-                <BracketMatchCard
-                  match={final}
-                  isFinal
-                  isSelected={selectedMatchId === final.id}
-                  hoveredTeamId={hoveredTeamId}
-                  onHoverTeam={setHoveredTeamId}
-                  onSelect={() => onSelectMatch(final.id)}
-                  onOpenModal={() => onOpenMatchModal(final.id)}
-                />
-              </div>
+              {final && (
+                <>
+                  <ChampionNode champion={champion} finalCompleted={final.status === "completed"} />
+                  <div className="max-w-md mx-auto">
+                    <BracketMatchCard
+                      match={final}
+                      isFinal
+                      isSelected={selectedMatchId === final.id}
+                      hoveredTeamId={hoveredTeamId}
+                      onHoverTeam={setHoveredTeamId}
+                      onSelect={() => onSelectMatch(final.id)}
+                      onOpenModal={() => onOpenMatchModal(final.id)}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -434,7 +442,11 @@ function BracketMatchCard({
             <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-paper" />Z{match.zone}
           </span>
         )}
-        {isCompleted && <span className="text-[9px] text-muted-foreground shrink-0">✓</span>}
+        {isCompleted && (
+          <span className="flex items-center gap-1 rounded-full border border-emerald-500/60 bg-emerald-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.18em] text-emerald-300 shrink-0">
+            ✓
+          </span>
+        )}
         {!isLive && !isCompleted && <span className="text-[9px] text-stone shrink-0">–</span>}
       </div>
 

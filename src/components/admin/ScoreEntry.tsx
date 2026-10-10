@@ -1,17 +1,24 @@
 import { useState, useEffect } from "react";
 import { Save, CheckCircle2, AlertCircle } from "lucide-react";
-import type { Match, ScoreBreakdown } from "@/content/tournament";
+import type { Match, MatchStatus, ScoreBreakdown } from "@/content/tournament";
 
 interface ScoreEntryProps {
-  activeMatch?: Match;
+  activeMatch?: Match | undefined;
   onSaveScores: (
     matchId: string,
     scoreA: ScoreBreakdown,
     scoreB: ScoreBreakdown,
-  ) => { success: boolean; error?: string };
+  ) => Promise<{ success: boolean; error?: string }>;
+  onUpdateStatus?: (
+    matchId: string,
+    status: MatchStatus,
+    winnerTeamId?: string,
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
-export function ScoreEntry({ activeMatch, onSaveScores }: ScoreEntryProps) {
+type ScoreErrors = { content: string | null; strategy: string | null; style: string | null };
+
+export function ScoreEntry({ activeMatch, onSaveScores, onUpdateStatus }: ScoreEntryProps) {
   // Score state for Team A (Proposition)
   const [contentA, setContentA] = useState<string>("0");
   const [strategyA, setStrategyA] = useState<string>("0");
@@ -25,6 +32,8 @@ export function ScoreEntry({ activeMatch, onSaveScores }: ScoreEntryProps) {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(
     null,
   );
+  const [saving, setSaving] = useState(false);
+  const [winnerSelection, setWinnerSelection] = useState<string>("");
 
   // Sync state when activeMatch changes
   useEffect(() => {
@@ -36,6 +45,7 @@ export function ScoreEntry({ activeMatch, onSaveScores }: ScoreEntryProps) {
       setContentB(String(activeMatch.scoreB?.content ?? 0));
       setStrategyB(String(activeMatch.scoreB?.strategy ?? 0));
       setStyleB(String(activeMatch.scoreB?.style ?? 0));
+      setWinnerSelection(activeMatch.winnerTeamId ?? "");
       setFeedback(null);
     }
   }, [activeMatch]);
@@ -60,7 +70,7 @@ export function ScoreEntry({ activeMatch, onSaveScores }: ScoreEntryProps) {
   const totalB = numContentB + numStrategyB + numStyleB;
 
   // Real-time field validation errors
-  const errorsA: Record<string, string | null> = {
+  const errorsA: ScoreErrors = {
     content:
       isNaN(numContentA) || numContentA < 0 || numContentA > 40
         ? "Content must be between 0 and 40"
@@ -73,7 +83,7 @@ export function ScoreEntry({ activeMatch, onSaveScores }: ScoreEntryProps) {
       isNaN(numStyleA) || numStyleA < 0 || numStyleA > 30 ? "Style must be between 0 and 30" : null,
   };
 
-  const errorsB: Record<string, string | null> = {
+  const errorsB: ScoreErrors = {
     content:
       isNaN(numContentB) || numContentB < 0 || numContentB > 40
         ? "Content must be between 0 and 40"
@@ -90,7 +100,7 @@ export function ScoreEntry({ activeMatch, onSaveScores }: ScoreEntryProps) {
     Boolean(errorsA.content || errorsA.strategy || errorsA.style) ||
     Boolean(errorsB.content || errorsB.strategy || errorsB.style);
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (hasErrors) {
       setFeedback({
@@ -100,32 +110,57 @@ export function ScoreEntry({ activeMatch, onSaveScores }: ScoreEntryProps) {
       return;
     }
 
-    const res = onSaveScores(
-      activeMatch.id,
-      {
-        content: numContentA,
-        strategy: numStrategyA,
-        style: numStyleA,
-        total: totalA,
-      },
-      {
-        content: numContentB,
-        strategy: numStrategyB,
-        style: numStyleB,
-        total: totalB,
-      },
-    );
+    setSaving(true);
+    try {
+      const res = await onSaveScores(
+        activeMatch.id,
+        {
+          content: numContentA,
+          strategy: numStrategyA,
+          style: numStyleA,
+          total: totalA,
+        },
+        {
+          content: numContentB,
+          strategy: numStrategyB,
+          style: numStyleB,
+          total: totalB,
+        },
+      );
 
-    if (res.success) {
+      if (!res.success) {
+        setFeedback({
+          type: "error",
+          message: res.error || "Failed to update scores. Please verify rubric parameters.",
+        });
+        return;
+      }
+
+      const selectedWinner = winnerSelection || activeMatch.winnerTeamId;
+      if (onUpdateStatus && selectedWinner) {
+        const winnerResult = await onUpdateStatus(activeMatch.id, "completed", selectedWinner);
+        if (!winnerResult.success) {
+          setFeedback({
+            type: "error",
+            message:
+              winnerResult.error ||
+              "Scores were saved but the official winner could not be stored.",
+          });
+          return;
+        }
+      }
+
       setFeedback({
         type: "success",
         message: `Official marks for ${activeMatch.roundLabel} successfully recorded and synced.`,
       });
-    } else {
+    } catch {
       setFeedback({
         type: "error",
-        message: res.error || "Failed to update scores. Please verify rubric parameters.",
+        message: "Scores could not be saved. Check the connection and retry.",
       });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -338,15 +373,42 @@ export function ScoreEntry({ activeMatch, onSaveScores }: ScoreEntryProps) {
           </div>
         </div>
 
+        <div className="mt-6 space-y-3 border-t-2 border-line pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="font-type text-[10px] uppercase tracking-wider text-mist/70">
+                Official winner
+              </div>
+              <div className="mt-1 font-serif text-sm italic text-mist/80">
+                Select the team that advances or closes the round.
+              </div>
+            </div>
+            <select
+              aria-label="Official winner"
+              value={winnerSelection || activeMatch.winnerTeamId || ""}
+              onChange={(e) => setWinnerSelection(e.target.value)}
+              className="border-2 border-line bg-canvas px-3 py-2 font-mono text-xs text-paper focus:border-sun focus:outline-none"
+            >
+              <option value="">-- Choose final winner --</option>
+              {activeMatch.teamA && (
+                <option value={activeMatch.teamA.id}>Winner: {activeMatch.teamA.name}</option>
+              )}
+              {activeMatch.teamB && (
+                <option value={activeMatch.teamB.id}>Winner: {activeMatch.teamB.name}</option>
+              )}
+            </select>
+          </div>
+        </div>
+
         {/* Submit */}
         <div className="flex items-center justify-end gap-3 border-t-2 border-line pt-4">
           <button
             type="submit"
-            disabled={hasErrors}
+            disabled={hasErrors || saving}
             className="flex items-center gap-2 border-2 border-sun bg-sun px-6 py-3 font-type text-xs font-bold uppercase tracking-wider text-ink shadow-[4px_4px_0_var(--line)] hover:bg-sun/90 active:translate-x-0.5 active:translate-y-0.5 disabled:opacity-50 transition-transform"
           >
             <Save size={14} />
-            <span>Record Official Scores</span>
+            <span>{saving ? "Saving Scores…" : "Record Official Scores"}</span>
           </button>
         </div>
       </form>

@@ -1,12 +1,43 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
-import { AdminAuthService, TournamentAdminApi, STORAGE_SESSION_KEY } from "@/lib/admin-api";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { Match, Team } from "@/content/tournament";
+import { AdminAuthService } from "@/lib/admin-api";
 import { AdminLogin } from "@/components/admin/AdminLogin";
+import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { MatchManagement } from "@/components/admin/MatchManagement";
 import { ScoreEntry } from "@/components/admin/ScoreEntry";
 import { TeamManagement } from "@/components/admin/TeamManagement";
-import { OFFICIAL_TEAMS, demoTournamentData } from "@/content/tournament";
+import { AudienceVoting } from "@/components/debait/scoreboard/AudienceVoting";
+import { TournamentBracket } from "@/components/debait/scoreboard/TournamentBracket";
+import * as useAdminTournamentModule from "@/hooks/useAdminTournament";
 
-describe("DE'BAIT Rural Admin Panel", () => {
+const makeTeam = (number: number): Team => ({
+  id: `test-team-${number}`,
+  number,
+  name: `Team ${number}`,
+  status: "registered",
+  members: Array.from({ length: 3 }, (_, index) => ({
+    id: `test-team-${number}-member-${index + 1}`,
+    name: `Member ${index + 1}`,
+  })),
+});
+
+const makeMatch = (): Match => ({
+  id: "test-match-1",
+  matchNumber: 1,
+  round: "preliminary",
+  roundLabel: "Prelim 01",
+  stageName: "Preliminaries · Match 01",
+  motion: "",
+  zone: 1,
+  status: "upcoming",
+  teamA: makeTeam(1),
+  teamB: makeTeam(2),
+  votes: { teamA: 50, teamB: 50, totalVotes: 0 },
+  votingStatus: "upcoming",
+});
+
+describe("DE'BAIT Supabase-backed operational UI", () => {
   beforeEach(() => {
     sessionStorage.clear();
     localStorage.clear();
@@ -17,105 +48,266 @@ describe("DE'BAIT Rural Admin Panel", () => {
     vi.restoreAllMocks();
   });
 
-  it("AdminAuthService enforces required credentials without hardcoded passwords", async () => {
-    expect(AdminAuthService.isAuthenticated()).toBe(false);
-
-    // Empty credentials reject
-    const emptyRes = await AdminAuthService.login("", "");
-    expect(emptyRes.success).toBe(false);
-    expect(AdminAuthService.isAuthenticated()).toBe(false);
-
-    // Legitimate operator login succeeds with generated session token
-    const loginRes = await AdminAuthService.login("Lead_Operator", "secure_ops_key_99");
-    expect(loginRes.success).toBe(true);
-    expect(AdminAuthService.isAuthenticated()).toBe(true);
-
-    const session = AdminAuthService.getSession();
-    expect(session?.username).toBe("Lead_Operator");
-    expect(session?.token).toBeTruthy();
-
-    // Logout terminates session
-    AdminAuthService.logout();
-    expect(AdminAuthService.isAuthenticated()).toBe(false);
-    expect(AdminAuthService.getSession()).toBeNull();
+  it("requires email and password and does not create a browser-local admin session", async () => {
+    const result = await AdminAuthService.login("", "");
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("email and password");
+    expect(sessionStorage.length).toBe(0);
   });
 
-  it("renders AdminLogin component and handles submission", async () => {
-    const handleSuccess = vi.fn();
-    render(<AdminLogin onSuccess={handleSuccess} />);
+  it("submits the administrator email and password through the Auth service", async () => {
+    const login = vi.spyOn(AdminAuthService, "login").mockResolvedValue({ success: true });
+    const onSuccess = vi.fn();
+    render(<AdminLogin onSuccess={onSuccess} />);
 
-    expect(screen.getByText(/RURAL/i)).toBeInTheDocument();
-    expect(screen.getByText(/OPERATIONAL TOURNAMENT DESK/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Administrator Email/i), {
+      target: { value: "operator@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/Administrator Password/i), {
+      target: { value: "correct horse battery staple" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Enter Operational Desk/i }));
 
-    const userInput = screen.getByLabelText(/Operator Identifier/i);
-    const keyInput = screen.getByLabelText(/Admin Access Key/i);
-    const submitBtn = screen.getByRole("button", { name: /Enter Operational Desk/i });
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce());
+    expect(login).toHaveBeenCalledWith("operator@example.com", "correct horse battery staple");
+    expect(sessionStorage.length).toBe(0);
+  });
 
-    fireEvent.change(userInput, { target: { value: "DeskChief" } });
-    fireEvent.change(keyInput, { target: { value: "passkey123" } });
-    fireEvent.click(submitBtn);
+  it("validates the official score rubric before sending a score mutation", async () => {
+    const saveScores = vi.fn().mockResolvedValue({ success: true });
+    render(<ScoreEntry activeMatch={makeMatch()} onSaveScores={saveScores} />);
+
+    const contentInputs = screen.getAllByRole("spinbutton");
+    fireEvent.change(contentInputs[0]!, { target: { value: "41" } });
+    expect(screen.getByRole("button", { name: /Record Official Scores/i })).toBeDisabled();
+    expect(saveScores).not.toHaveBeenCalled();
+  });
+
+  it("submits both score sides and reports a successful server response", async () => {
+    const saveScores = vi.fn().mockResolvedValue({ success: true });
+    render(<ScoreEntry activeMatch={makeMatch()} onSaveScores={saveScores} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Record Official Scores/i }));
+    await waitFor(() => expect(saveScores).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(screen.getByText(/successfully recorded and synced/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("switches the admin dashboard into score entry when a recent result is selected", async () => {
+    const completedMatch: Match = {
+      ...makeMatch(),
+      id: "completed-match-1",
+      roundLabel: "Prelim 01",
+      stageName: "Preliminaries · Match 01",
+      status: "completed",
+      winnerTeamId: "test-team-1",
+      teamA: makeTeam(1),
+      teamB: makeTeam(2),
+      scoreA: { content: 31, strategy: 26, style: 24, total: 81 },
+      scoreB: { content: 28, strategy: 22, style: 20, total: 70 },
+    };
+
+    vi.spyOn(useAdminTournamentModule, "useAdminTournament").mockReturnValue({
+      tree: {
+        preliminaries: [completedMatch],
+        semiFinals: [],
+        final: undefined,
+      },
+      allMatches: [completedMatch],
+      allTeams: [makeTeam(1), makeTeam(2)],
+      activeMatch: completedMatch,
+      activeMatchId: completedMatch.id,
+      setActiveMatchId: vi.fn(),
+      updateScores: vi.fn().mockResolvedValue({ success: true }),
+      updateStatus: vi.fn().mockResolvedValue({ success: true }),
+      setZone: vi.fn().mockResolvedValue({ success: true }),
+      toggleSwitch: vi.fn().mockResolvedValue({ success: true }),
+      setVoting: vi.fn().mockResolvedValue({ success: true }),
+      updateTeam: vi.fn().mockResolvedValue({ success: true }),
+      createTeam: vi.fn().mockResolvedValue({ success: true }),
+      createMatch: vi.fn().mockResolvedValue({ success: true }),
+      deleteMatch: vi.fn().mockResolvedValue({ success: true }),
+      deleteTeam: vi.fn().mockResolvedValue({ success: true }),
+      assignMatchTeam: vi.fn().mockResolvedValue({ success: true }),
+      isLoading: false,
+      error: null,
+      refresh: vi.fn().mockResolvedValue(undefined),
+    });
+
+    render(<AdminDashboard operatorName="Desk Lead" onLogout={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Recent Results/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Edit \/ Review in Score Entry/i }));
 
     await waitFor(() => {
-      expect(handleSuccess).toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: /Record Official Scores/i })).toBeInTheDocument();
     });
+    expect(screen.getByText(/Prelim 01 Score Entry/i)).toBeInTheDocument();
   });
 
-  it("validates official rubric score limits (Content 40, Strategy 30, Style 30)", () => {
-    const match = demoTournamentData.preliminaries[0];
-
-    // Invalid content score (> 40)
-    const invalidRes = TournamentAdminApi.updateMatchScores(
-      match.id,
-      { content: 45, strategy: 25, style: 25, total: 95 },
-      { content: 30, strategy: 20, style: 20, total: 70 },
+  it("renders canonical team rows and preserves their individual members in admin only", () => {
+    const teams = Array.from({ length: 16 }, (_, index) => makeTeam(index + 1));
+    render(
+      <TeamManagement
+        teams={teams}
+        onCreateTeam={vi.fn().mockResolvedValue({ success: true })}
+        onUpdateTeam={vi.fn().mockResolvedValue({ success: true })}
+        onDeleteTeam={vi.fn().mockResolvedValue({ success: true })}
+      />,
     );
-    expect(invalidRes.success).toBe(false);
-    expect(invalidRes.error).toContain("exceed official rubric bounds");
 
-    // Valid score
-    const validRes = TournamentAdminApi.updateMatchScores(
-      match.id,
-      { content: 38, strategy: 28, style: 28, total: 94 },
-      { content: 30, strategy: 20, style: 20, total: 70 },
+    expect(screen.getByText(/TEAM ROSTER/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/3 members/i)).toHaveLength(16);
+    expect(screen.getAllByText("Member 1")).toHaveLength(16);
+  });
+
+  it("saves a new roster with status and stream through the async service", async () => {
+    const createTeam = vi.fn().mockResolvedValue({ success: true });
+    render(
+      <TeamManagement
+        teams={[]}
+        onCreateTeam={createTeam}
+        onUpdateTeam={vi.fn().mockResolvedValue({ success: true })}
+        onDeleteTeam={vi.fn().mockResolvedValue({ success: true })}
+      />,
     );
-    expect(validRes.success).toBe(true);
 
-    const updatedTree = TournamentAdminApi.getTree();
-    const updatedMatch = updatedTree.preliminaries.find((m) => m.id === match.id);
-    expect(updatedMatch?.scoreA?.total).toBe(94);
+    fireEvent.click(screen.getByRole("button", { name: /Add Team/i }));
+    fireEvent.change(screen.getByLabelText(/Team name/i), { target: { value: "Bright Minds" } });
+    fireEvent.change(screen.getByLabelText(/Stream/i), { target: { value: "Engineering" } });
+    fireEvent.change(screen.getByLabelText("Member 1 name"), { target: { value: "A" } });
+    fireEvent.change(screen.getByLabelText("Member 2 name"), { target: { value: "B" } });
+    fireEvent.change(screen.getByLabelText("Member 3 name"), { target: { value: "C" } });
+    fireEvent.click(screen.getByRole("button", { name: /Save Team/i }));
+
+    await waitFor(() =>
+      expect(createTeam).toHaveBeenCalledWith({
+        name: "Bright Minds",
+        stream: "Engineering",
+        status: "registered",
+        members: [
+          { id: "", name: "A" },
+          { id: "", name: "B" },
+          { id: "", name: "C" },
+        ],
+      }),
+    );
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Bright Minds added"));
   });
 
-  it("ScoreEntry component displays and calculates total marks dynamically", () => {
-    const match = demoTournamentData.preliminaries[0];
-    const saveMock = vi.fn().mockReturnValue({ success: true });
+  it("renders the add-match workflow so an admin can create a valid match from the canonical team list", async () => {
+    const onCreateMatch = vi.fn().mockResolvedValue({ success: true });
+    render(
+      <MatchManagement
+        allMatches={[]}
+        teams={[makeTeam(1), makeTeam(2)]}
+        activeMatchId=""
+        onSelectMatch={vi.fn()}
+        onUpdateStatus={vi.fn().mockResolvedValue({ success: true })}
+        onAssignTeam={vi.fn().mockResolvedValue({ success: true })}
+        onCreateMatch={onCreateMatch}
+        onDeleteMatch={vi.fn().mockResolvedValue({ success: true })}
+      />,
+    );
 
-    render(<ScoreEntry activeMatch={match} onSaveScores={saveMock} />);
+    expect(screen.getByRole("status")).toHaveTextContent("No matches yet");
+    expect(screen.queryByText(/8 Preliminaries · 2 Semifinals · 1 Grand Final/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Prelims \(0\)/i })).toBeNull();
 
-    expect(screen.getByText(/OFFICIAL JUDGE MARKS/i)).toBeInTheDocument();
-    expect(screen.getByText(/100-POINT SYSTEM/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Add Match/i }));
+    fireEvent.change(screen.getByLabelText(/Match round/i), { target: { value: "preliminary" } });
+    fireEvent.change(screen.getByLabelText(/Team A/i), { target: { value: "test-team-1" } });
+    fireEvent.change(screen.getByLabelText(/Team B/i), { target: { value: "test-team-2" } });
+    fireEvent.change(screen.getByLabelText(/Stage name/i), {
+      target: { value: "Preliminaries · Match 01" },
+    });
+    fireEvent.change(screen.getByLabelText(/Court/i), { target: { value: "Court 1" } });
+    fireEvent.click(screen.getByRole("button", { name: /Save Match/i }));
 
-    const saveButton = screen.getByRole("button", { name: /Record Official Scores/i });
-    fireEvent.click(saveButton);
-
-    expect(saveMock).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(onCreateMatch).toHaveBeenCalledWith({
+        round: "preliminary",
+        roundLabel: "Prelim 01",
+        stageName: "Preliminaries · Match 01",
+        teamAId: "test-team-1",
+        teamBId: "test-team-2",
+        court: "Court 1",
+        status: "upcoming",
+      }),
+    );
   });
 
-  it("TeamManagement component renders 16 teams and supports member editing", () => {
-    const updateTeamMock = vi.fn().mockReturnValue({ success: true });
+  it("shows a confirmed remove action for completed matches too", async () => {
+    const match = { ...makeMatch(), status: "completed" as const };
+    const onDeleteMatch = vi.fn().mockResolvedValue({ success: true });
+    render(
+      <MatchManagement
+        allMatches={[match]}
+        teams={[makeTeam(1), makeTeam(2)]}
+        activeMatchId={match.id}
+        onSelectMatch={vi.fn()}
+        onUpdateStatus={vi.fn().mockResolvedValue({ success: true })}
+        onAssignTeam={vi.fn().mockResolvedValue({ success: true })}
+        onCreateMatch={vi.fn().mockResolvedValue({ success: true })}
+        onDeleteMatch={onDeleteMatch}
+      />,
+    );
 
-    render(<TeamManagement teams={OFFICIAL_TEAMS} onUpdateTeam={updateTeamMock} />);
+    fireEvent.click(screen.getByRole("button", { name: /Remove Match/i }));
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    expect(onDeleteMatch).not.toHaveBeenCalled();
 
-    expect(screen.getByText(/OFFICIAL TEAMS ROSTER/i)).toBeInTheDocument();
-    expect(screen.getByText(/16 TEAMS CAPACITY/i)).toBeInTheDocument();
-
-    // Verify 5-member requirement indicator
-    expect(screen.getByText(/3 Main Core Speakers \+ 2 Official Substitutes/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Confirm Remove/i }));
+    await waitFor(() => expect(onDeleteMatch).toHaveBeenCalledWith(match.id));
   });
 
-  it("verifies public pages have zero exposed links to /rural", () => {
-    // Check that public routes and navigation don't have href="/rural"
-    // We can verify this via query inspection in a DOM render or checking content
-    const navText = `Navigation items: HOME, SCOREBOARD, REGISTER`;
-    expect(navText.toLowerCase()).not.toContain("/rural");
+  it("renders the public bracket when the final match has been deleted", () => {
+    render(
+      <TournamentBracket
+        tree={{ preliminaries: [], semiFinals: [] }}
+        onSelectMatch={vi.fn()}
+        onOpenMatchModal={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("region", { name: "Tournament Bracket" })).toBeInTheDocument();
+    expect(screen.queryByText("CHAMPION")).not.toBeInTheDocument();
+  });
+
+  it("reports safe-archive errors and leaves the confirmation open for resolution", async () => {
+    const removeTeam = vi.fn().mockResolvedValue({
+      success: false,
+      error: "Resolve this team's upcoming match assignment first.",
+    });
+    render(
+      <TeamManagement
+        teams={[makeTeam(1)]}
+        onCreateTeam={vi.fn().mockResolvedValue({ success: true })}
+        onUpdateTeam={vi.fn().mockResolvedValue({ success: true })}
+        onDeleteTeam={removeTeam}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Remove Team 1/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Remove Team$/i }));
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/upcoming match assignment/i),
+    );
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+  });
+
+  it("reports audience voting failures without claiming a ballot was recorded", async () => {
+    const castVote = vi
+      .fn()
+      .mockResolvedValue({ success: false, error: "A ballot has already been recorded." });
+    const match = { ...makeMatch(), status: "live" as const, votingStatus: "open" as const };
+    render(<AudienceVoting match={match} onCastVote={castVote} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /VOTE TEAM 1/i }));
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/already been recorded/i),
+    );
+    expect(castVote).toHaveBeenCalledWith(match.id, match.teamA!.id);
   });
 });

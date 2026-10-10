@@ -6,6 +6,7 @@ import { LiveScorecard } from "@/components/debait/scoreboard/LiveScorecard";
 import { AudienceVoting } from "@/components/debait/scoreboard/AudienceVoting";
 import { RecentResults } from "@/components/debait/scoreboard/RecentResults";
 import { MatchDetailModal } from "@/components/debait/scoreboard/MatchDetailModal";
+import { TournamentBracket } from "@/components/debait/scoreboard/TournamentBracket";
 import logoMark from "@/assets/logo-mark.png";
 
 export const Route = createFileRoute("/scoreboard")({
@@ -32,8 +33,7 @@ export const Route = createFileRoute("/scoreboard")({
 
 function ScoreboardPage() {
   const {
-    dataMode,
-    switchDataMode,
+    tree,
     allMatches,
     liveMatches,
     activeMatch,
@@ -42,22 +42,45 @@ function ScoreboardPage() {
     modalMatch,
     modalMatchId,
     setModalMatchId,
-    userVotes,
+    userVote,
     castVote,
-    setMatchZone,
-    toggleSwitchRound,
+    isLoading,
+    error,
+    refetch,
   } = useTournament();
-
-  const currentVote = activeMatch ? userVotes[activeMatch.id] : undefined;
 
   return (
     <main className="scoreboard-site min-h-screen overflow-x-hidden bg-canvas text-mist selection:bg-hot selection:text-paper">
       {/* 1. COMPACT SCOREBOARD SPECIFIC HEADER */}
-      <ScoreboardHeader
-        hasLiveMatch={liveMatches.length > 0}
-        dataMode={dataMode}
-        onToggleDataMode={switchDataMode}
-      />
+      <ScoreboardHeader hasLiveMatch={liveMatches.length > 0} />
+
+      {(isLoading || error) && (
+        <div className="mx-auto mt-4 max-w-[1400px] px-4 md:px-8">
+          {isLoading && (
+            <p
+              role="status"
+              className="border border-ink/20 bg-paper px-4 py-3 font-type text-xs text-ink"
+            >
+              Connecting to the live tournament…
+            </p>
+          )}
+          {error && (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-3 border border-hot bg-paper px-4 py-3 font-type text-xs text-ink"
+            >
+              <span>Tournament data could not be refreshed. Check your connection and retry.</span>
+              <button
+                type="button"
+                onClick={() => void refetch()}
+                className="border border-ink px-3 py-1.5 font-bold uppercase hover:bg-ink hover:text-sun"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Main Scoreboard Content Container */}
       <div className="mx-auto max-w-[1700px] px-3 py-8 md:px-6 space-y-16">
@@ -95,6 +118,21 @@ function ScoreboardPage() {
           </div>
         </div>
 
+        {tree && (
+          <TournamentBracket
+            tree={tree}
+            selectedMatchId={selectedMatchId}
+            onSelectMatch={(id) => {
+              setSelectedMatchId(id);
+              const el = document.getElementById("live-scorecard-section");
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth" });
+              }
+            }}
+            onOpenMatchModal={(id) => setModalMatchId(id)}
+          />
+        )}
+
         {/* 3. CURRENT LIVE MATCHES */}
         <LiveMatches
           matches={liveMatches}
@@ -126,19 +164,11 @@ function ScoreboardPage() {
             </div>
           </div>
 
-          <LiveScorecard
-            match={activeMatch}
-            onZoneChange={
-              activeMatch?.status === "live" ? (z) => setMatchZone(activeMatch.id, z) : undefined
-            }
-            onToggleSwitchRound={
-              activeMatch?.status === "live" ? () => toggleSwitchRound(activeMatch.id) : undefined
-            }
-          />
+          <LiveScorecard match={activeMatch} />
         </div>
 
         {/* 5. AUDIENCE / PARTICIPANT VOTING (Interactive Centerpiece) */}
-        <AudienceVoting match={activeMatch} userVote={currentVote} onCastVote={castVote} />
+        <AudienceVoting match={activeMatch} userVote={userVote} onCastVote={castVote} />
 
         {/* 6. RECENT RESULTS / MATCH HISTORY */}
         <RecentResults matches={allMatches} onOpenMatchModal={(id) => setModalMatchId(id)} />

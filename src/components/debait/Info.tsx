@@ -1,16 +1,11 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import {
-  event,
-  previewMatch,
-  liveMatch,
-  rules,
-  schedule,
-  teams,
-  type LiveMatch,
-  type Team,
-} from "@/content/event";
+import { event, rules, schedule } from "@/content/event";
+import type { Match, Team } from "@/content/tournament";
+import { fetchTournamentSnapshot } from "@/lib/tournament-data";
+import { tournamentQueryKey } from "@/lib/tournament-queries";
 import logoMark from "@/assets/logo-mark.png";
 import { Kicker, Reveal, Scribble } from "./primitives";
 import { Magnetic } from "./Magnetic";
@@ -88,13 +83,8 @@ export function Schedule() {
 }
 
 export function TeamCard({ team }: { team: Team }) {
-  const filled = !!team.name;
   return (
-    <div
-      className={`group relative aspect-[4/5] border-2 border-ink p-4 transition-all hover:-translate-y-1 hover:shadow-[6px_6px_0_var(--hot)] ${
-        filled ? "bg-paper" : "bg-ivory"
-      }`}
-    >
+    <div className="group relative aspect-[4/5] border-2 border-ink bg-paper p-4 transition-all hover:-translate-y-1 hover:shadow-[6px_6px_0_var(--hot)]">
       <span
         className="display text-6xl text-sun md:text-7xl"
         style={{ textShadow: "3px 3px 0 var(--ink)" }}
@@ -102,18 +92,23 @@ export function TeamCard({ team }: { team: Team }) {
         {String(team.number).padStart(2, "0")}
       </span>
       <div className="absolute inset-x-4 bottom-4">
-        <p className="display text-2xl">{team.name ?? "Slot open"}</p>
-        <p className="font-type text-xs uppercase text-muted-foreground">
-          {team.status ?? "Awaiting registration"}
-          {team.currentRound ? ` · ${team.currentRound}` : ""}
-        </p>
-        {team.members && <p className="mt-1 text-xs">{team.members.join(", ")}</p>}
+        <p className="display text-2xl">{team.name}</p>
+        <p className="font-type text-xs uppercase text-muted-foreground">{team.status}</p>
       </div>
     </div>
   );
 }
 
 export function Teams() {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: tournamentQueryKey,
+    queryFn: fetchTournamentSnapshot,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    retry: 2,
+  });
+  const teams = data?.activeTeams ?? [];
+
   return (
     <section id="teams" className="bg-paper px-5 py-24 md:px-10 md:py-32" aria-labelledby="teams-h">
       <div className="mx-auto max-w-[1400px]">
@@ -123,15 +118,39 @@ export function Teams() {
             Sixteen <span className="text-hot">seats.</span>
           </h2>
           <p className="max-w-sm font-serif text-lg">
-            Teams of five from {event.streams.join(", ")}. Line-ups appear here once registration
-            closes.
+            Registered teams from {event.streams.join(", ")}.
           </p>
         </div>
         <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
-          {teams.map((t) => (
-            <TeamCard key={t.number} team={t} />
+          {teams.map((team) => (
+            <TeamCard key={team.id} team={team} />
           ))}
         </div>
+        {isLoading && (
+          <p role="status" className="mt-6 font-type text-xs uppercase text-muted-foreground">
+            Loading registered teams…
+          </p>
+        )}
+        {!isLoading && !error && teams.length === 0 && (
+          <p className="mt-6 font-type text-xs uppercase text-muted-foreground">
+            No teams are registered yet.
+          </p>
+        )}
+        {error && (
+          <div
+            role="alert"
+            className="mt-6 flex flex-wrap items-center gap-3 font-type text-xs text-hot"
+          >
+            <span>Team data could not be loaded.</span>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="border border-ink px-3 py-1.5 text-ink hover:bg-ink hover:text-sun"
+            >
+              Retry
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -197,16 +216,11 @@ export function Rules() {
   );
 }
 
-export function LiveScorecard({ match, preview }: { match: LiveMatch; preview?: boolean }) {
+export function LiveScorecard({ match }: { match: Match }) {
   return (
     <div className="relative border-2 border-ivory/20 bg-ink p-6 md:p-8">
-      {preview && (
-        <span className="absolute -top-3 left-6 bg-sun px-2 py-0.5 font-type text-xs uppercase text-ink">
-          Design preview · not real data
-        </span>
-      )}
       <div className="flex items-center justify-between font-type text-xs uppercase tracking-widest text-stone">
-        <span>{match.round}</span>
+        <span>{match.roundLabel}</span>
         <span className="flex items-center gap-2">
           <span className="pulse-dot h-2 w-2 rounded-full bg-hot" /> Zone 0{match.zone}
         </span>
@@ -215,25 +229,25 @@ export function LiveScorecard({ match, preview }: { match: LiveMatch; preview?: 
       <div className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
         <div>
           <p className="font-type text-xs uppercase text-stone">Proposition</p>
-          <p className="display text-3xl text-ivory">{match.proposition.name}</p>
-          <p className="display text-6xl text-sun">{match.proposition.score}</p>
+          <p className="display text-3xl text-ivory">{match.teamA?.name ?? "Awaiting team"}</p>
+          <p className="display text-6xl text-sun">{match.scoreA?.total ?? "—"}</p>
         </div>
         <span className="display text-3xl text-hot">vs</span>
         <div className="text-right">
           <p className="font-type text-xs uppercase text-stone">Opposition</p>
-          <p className="display text-3xl text-ivory">{match.opposition.name}</p>
-          <p className="display text-6xl text-sun">{match.opposition.score}</p>
+          <p className="display text-3xl text-ivory">{match.teamB?.name ?? "Awaiting team"}</p>
+          <p className="display text-6xl text-sun">{match.scoreB?.total ?? "—"}</p>
         </div>
       </div>
       <div className="mt-8">
         <p className="font-type text-xs uppercase tracking-widest text-stone">Audience vote</p>
         <div className="mt-2 flex h-4 overflow-hidden">
-          <div className="bg-sun" style={{ width: `${match.votes.proposition}%` }} />
-          <div className="bg-hot" style={{ width: `${match.votes.opposition}%` }} />
+          <div className="bg-sun" style={{ width: `${match.votes.teamA}%` }} />
+          <div className="bg-hot" style={{ width: `${match.votes.teamB}%` }} />
         </div>
         <div className="mt-1 flex justify-between font-type text-xs text-ivory/70">
-          <span>{match.votes.proposition}%</span>
-          <span>{match.votes.opposition}%</span>
+          <span>{match.votes.teamA}%</span>
+          <span>{match.votes.teamB}%</span>
         </div>
       </div>
     </div>
@@ -241,6 +255,21 @@ export function LiveScorecard({ match, preview }: { match: LiveMatch; preview?: 
 }
 
 export function Live() {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: tournamentQueryKey,
+    queryFn: fetchTournamentSnapshot,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    retry: 2,
+  });
+  const currentMatch = data
+    ? [
+        ...data.tree.preliminaries,
+        ...data.tree.semiFinals,
+        ...(data.tree.final ? [data.tree.final] : []),
+      ].find((match) => match.status === "live")
+    : undefined;
+
   return (
     <section
       id="live"
@@ -251,7 +280,7 @@ export function Live() {
         <div>
           <div className="mb-8 flex items-center gap-4 font-type text-sm uppercase tracking-widest">
             <span className="bg-hot px-2 py-1 text-paper">11</span>
-            <span>Coming soon</span>
+            <span>{currentMatch ? "Live now" : "Tournament desk"}</span>
           </div>
           <h2 id="live-h" className="display text-7xl md:text-9xl">
             Watch it
@@ -259,8 +288,8 @@ export function Live() {
             <span className="text-sun">live.</span>
           </h2>
           <p className="mt-6 max-w-md font-serif text-xl text-ivory/80">
-            A live companion is on the way: the current match, competing teams, official scorecards,
-            the bracket as it moves, and audience voting.
+            Current match, competing teams, official scorecards, bracket progression, and audience
+            voting.
           </p>
           <ul className="mt-8 flex flex-wrap gap-2 font-type text-xs uppercase">
             {["Current match", "Teams", "Scorecards", "Bracket", "Audience vote"].map((x) => (
@@ -282,10 +311,36 @@ export function Live() {
           </div>
         </div>
         <Reveal>
-          {liveMatch ? (
-            <LiveScorecard match={liveMatch} />
+          {currentMatch ? (
+            <LiveScorecard match={currentMatch} />
           ) : (
-            <LiveScorecard match={previewMatch} preview />
+            <div className="border-2 border-ivory/20 bg-ink p-6 md:p-8">
+              {isLoading && (
+                <p role="status" className="font-type text-xs uppercase text-stone">
+                  Loading live tournament data…
+                </p>
+              )}
+              {!isLoading && !error && (
+                <p className="font-type text-xs uppercase text-stone">
+                  No match is currently live.
+                </p>
+              )}
+              {error && (
+                <div
+                  role="alert"
+                  className="flex items-center justify-between gap-3 font-type text-xs text-ivory"
+                >
+                  <span>Live data is unavailable.</span>
+                  <button
+                    type="button"
+                    onClick={() => void refetch()}
+                    className="border border-sun px-3 py-1.5 text-sun hover:bg-sun hover:text-ink"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </Reveal>
       </div>

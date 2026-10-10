@@ -1,202 +1,87 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import {
-  type TournamentTree,
-  type Match,
-  type UserVote,
-  type ZoneNumber,
-  demoTournamentData,
-  emptyTournamentData,
-} from "@/content/tournament";
-
-const STORAGE_VOTES_KEY = "debait_user_votes_v1";
-const STORAGE_MODE_KEY = "debait_tournament_mode_v1";
+import { useCallback, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { UserVote } from "@/content/tournament";
+import { fetchTournamentSnapshot, castAudienceVote } from "@/lib/tournament-data";
+import { audienceVoteQueryKey, tournamentQueryKey } from "@/lib/tournament-queries";
+import { requireSupabase, supabase } from "@/lib/supabase";
 
 export function useTournament() {
-  // 'demo' (active live tournament simulation) vs 'empty' (pure pre-event bracket)
-  const [dataMode, setDataMode] = useState<"demo" | "empty">("demo");
-  const [tree, setTree] = useState<TournamentTree>(demoTournamentData);
-  const [selectedMatchId, setSelectedMatchId] = useState<string>("sf-2"); // Default to live semifinal
+  const queryClient = useQueryClient();
+  const [selectedMatchId, setSelectedMatchId] = useState("");
   const [modalMatchId, setModalMatchId] = useState<string | null>(null);
-  const [userVotes, setUserVotes] = useState<Record<string, UserVote>>({});
+  const tournamentQuery = useQuery({
+    queryKey: tournamentQueryKey,
+    queryFn: fetchTournamentSnapshot,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    retry: 2,
+  });
 
-  // Load votes, tree and mode preference from storage
-  useEffect(() => {
-    try {
-      const savedTree = localStorage.getItem("debait_tournament_tree_v1");
-      if (savedTree) {
-        setTree(JSON.parse(savedTree));
-      }
-      const savedVotes = localStorage.getItem(STORAGE_VOTES_KEY);
-      if (savedVotes) {
-        setUserVotes(JSON.parse(savedVotes));
-      }
-      const savedMode = localStorage.getItem(STORAGE_MODE_KEY);
-      if (savedMode === "empty" || savedMode === "demo") {
-        setDataMode(savedMode);
-        if (!savedTree) {
-          setTree(savedMode === "demo" ? demoTournamentData : emptyTournamentData);
-        }
-      }
-    } catch {
-      // ignore in SSR or restricted environments
-    }
+  const allMatches = useMemo(() => {
+    const tree = tournamentQuery.data?.tree;
+    return tree
+      ? [...tree.preliminaries, ...tree.semiFinals, ...(tree.final ? [tree.final] : [])]
+      : [];
+  }, [tournamentQuery.data]);
+  const liveMatches = useMemo(
+    () => allMatches.filter((match) => match.status === "live"),
+    [allMatches],
+  );
+  const activeMatch = useMemo(
+    () =>
+      allMatches.find((match) => match.id === selectedMatchId) ?? liveMatches[0] ?? allMatches[0],
+    [allMatches, liveMatches, selectedMatchId],
+  );
+  const modalMatch = modalMatchId
+    ? allMatches.find((match) => match.id === modalMatchId)
+    : undefined;
 
-    const handleTreeUpdate = (event: Event) => {
-      const custom = event as CustomEvent<TournamentTree>;
-      if (custom.detail) {
-        setTree(custom.detail);
-      } else {
-        try {
-          const savedTree = localStorage.getItem("debait_tournament_tree_v1");
-          if (savedTree) {
-            setTree(JSON.parse(savedTree));
-          }
-        } catch {
-          // ignore
-        }
-      }
-    };
-
-    window.addEventListener("tournament-tree-updated", handleTreeUpdate);
-    window.addEventListener("storage", handleTreeUpdate);
-    return () => {
-      window.removeEventListener("tournament-tree-updated", handleTreeUpdate);
-      window.removeEventListener("storage", handleTreeUpdate);
-    };
-  }, []);
-
-  const switchDataMode = useCallback((mode: "demo" | "empty") => {
-    setDataMode(mode);
-    setTree(mode === "demo" ? demoTournamentData : emptyTournamentData);
-    try {
-      localStorage.setItem(STORAGE_MODE_KEY, mode);
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  // All matches flattened
-  const allMatches = useMemo<Match[]>(() => {
-    return [...(tree.preliminaries || []), ...(tree.semiFinals || []), tree.final].filter(Boolean);
-  }, [tree]);
-
-  // Current live matches
-  const liveMatches = useMemo<Match[]>(() => {
-    return allMatches.filter((m) => m.status === "live");
-  }, [allMatches]);
-
-  // Selected match object
-  const activeMatch = useMemo<Match | undefined>(() => {
-    return allMatches.find((m) => m.id === selectedMatchId) || liveMatches[0] || allMatches[0];
-  }, [allMatches, selectedMatchId, liveMatches]);
-
-  // Match for detail modal
-  const modalMatch = useMemo<Match | undefined>(() => {
-    if (!modalMatchId) return undefined;
-    return allMatches.find((m) => m.id === modalMatchId);
-  }, [allMatches, modalMatchId]);
-
-  // Cast audience vote
-  const castVote = useCallback(
-    (matchId: string, teamId: string) => {
-      // Record vote in user state
-      const newVote: UserVote = { matchId, teamId, timestamp: Date.now() };
-      const updatedUserVotes = { ...userVotes, [matchId]: newVote };
-      setUserVotes(updatedUserVotes);
-      try {
-        localStorage.setItem(STORAGE_VOTES_KEY, JSON.stringify(updatedUserVotes));
-      } catch {
-        // ignore
-      }
-
-      // Update match vote percentage in memory
-      setTree((prevTree) => {
-        const updateMatch = (match: Match): Match => {
-          if (match.id !== matchId) return match;
-          const isTeamA = match.teamA?.id === teamId;
-          const currentTotal = match.votes.totalVotes || 100;
-          const newTotal = currentTotal + 1;
-
-          // Recompute distribution
-          let newPctA = match.votes.teamA;
-          let newPctB = match.votes.teamB;
-
-          if (isTeamA) {
-            newPctA = Math.min(
-              99,
-              Math.round((((match.votes.teamA * currentTotal) / 100 + 1) / newTotal) * 100),
-            );
-            newPctB = 100 - newPctA;
-          } else {
-            newPctB = Math.min(
-              99,
-              Math.round((((match.votes.teamB * currentTotal) / 100 + 1) / newTotal) * 100),
-            );
-            newPctA = 100 - newPctB;
-          }
-
-          return {
-            ...match,
-            votes: {
-              teamA: newPctA,
-              teamB: newPctB,
-              totalVotes: newTotal,
-            },
-          };
-        };
-
-        return {
-          ...prevTree,
-          preliminaries: (prevTree.preliminaries || []).map(updateMatch),
-          semiFinals: (prevTree.semiFinals || []).map(updateMatch),
-          final: updateMatch(prevTree.final),
-        };
-      });
+  const voteQuery = useQuery({
+    queryKey: audienceVoteQueryKey(activeMatch?.id ?? "", "current-user"),
+    enabled: Boolean(activeMatch && supabase),
+    queryFn: async (): Promise<UserVote | null> => {
+      const client = requireSupabase();
+      const { data: session } = await client.auth.getSession();
+      if (!session.session) return null;
+      const { data, error } = await client
+        .from("audience_votes")
+        .select("match_id, team_id, created_at")
+        .eq("match_id", activeMatch!.id)
+        .eq("voter_id", session.session.user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data
+        ? { matchId: data.match_id, teamId: data.team_id, timestamp: Date.parse(data.created_at) }
+        : null;
     },
-    [userVotes],
+  });
+
+  const castVote = useCallback(
+    async (matchId: string, teamId: string) => {
+      const result = await castAudienceVote(matchId, teamId);
+      if (result.success) {
+        await queryClient.invalidateQueries({ queryKey: tournamentQueryKey });
+        await queryClient.invalidateQueries({ queryKey: ["tournament", "audience-vote", matchId] });
+      }
+      return result;
+    },
+    [queryClient],
   );
 
-  // Simulation controls for testing realtime transitions
-  const setMatchZone = useCallback((matchId: string, zone: ZoneNumber) => {
-    setTree((prevTree) => {
-      const update = (m: Match): Match => (m.id === matchId ? { ...m, zone } : m);
-      return {
-        ...prevTree,
-        preliminaries: (prevTree.preliminaries || []).map(update),
-        semiFinals: (prevTree.semiFinals || []).map(update),
-        final: update(prevTree.final),
-      };
-    });
-  }, []);
-
-  const toggleSwitchRound = useCallback((matchId: string) => {
-    setTree((prevTree) => {
-      const update = (m: Match): Match =>
-        m.id === matchId ? { ...m, switchRoundTriggered: !m.switchRoundTriggered } : m;
-      return {
-        ...prevTree,
-        preliminaries: (prevTree.preliminaries || []).map(update),
-        semiFinals: (prevTree.semiFinals || []).map(update),
-        final: update(prevTree.final),
-      };
-    });
-  }, []);
-
   return {
-    tree,
-    dataMode,
-    switchDataMode,
+    tree: tournamentQuery.data?.tree,
     allMatches,
     liveMatches,
     activeMatch,
-    selectedMatchId,
+    selectedMatchId: activeMatch?.id ?? "",
     setSelectedMatchId,
     modalMatch,
     modalMatchId,
     setModalMatchId,
-    userVotes,
+    userVote: voteQuery.data ?? undefined,
     castVote,
-    setMatchZone,
-    toggleSwitchRound,
+    isLoading: tournamentQuery.isLoading,
+    error: tournamentQuery.error ?? voteQuery.error,
+    refetch: tournamentQuery.refetch,
   };
 }

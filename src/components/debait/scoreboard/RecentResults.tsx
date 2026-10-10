@@ -45,7 +45,9 @@ export function RecentResults({ matches, onOpenMatchModal }: RecentResultsProps)
                   <span className="font-bold uppercase tracking-wider text-hot">
                     {m.roundLabel}
                   </span>
-                  <span className="text-[10px] text-stone">{m.completedTime || "COMPLETED"}</span>
+                  <span className="rounded-full border border-emerald-500/60 bg-emerald-500/15 px-2 py-0.5 font-type text-[9px] font-bold uppercase tracking-[0.18em] text-emerald-300">
+                    {m.completedTime || "COMPLETED"}
+                  </span>
                 </div>
 
                 {/* Motion note */}
@@ -89,9 +91,9 @@ export function RecentResults({ matches, onOpenMatchModal }: RecentResultsProps)
                       </span>
                       <span className="font-type text-xs uppercase text-ink">{m.teamB?.name}</span>
                       {isWinnerB && (
-                        <span className="bg-ink px-1.5 py-0.2 font-type text-[9px] text-sun uppercase">
+                       <span className="bg-ink px-1.5 py-0.2 font-type text-[9px] text-white uppercase">
                           WINNER
-                        </span>
+                      </span>
                       )}
                     </div>
                     <span className="display text-xl text-ink">{m.scoreB?.total ?? "--"}</span>

@@ -14,6 +14,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { LenisProvider } from "../hooks/useLenis";
 import { CinematicTransitionProvider } from "../components/debait/CinematicTransition";
+import { TournamentRealtimeSync } from "../components/TournamentRealtimeSync";
 
 function NotFoundComponent() {
   return (
@@ -143,6 +144,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <TournamentRealtimeSync />
       <LenisProvider>
         <CinematicTransitionProvider>
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}

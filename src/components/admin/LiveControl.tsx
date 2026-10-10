@@ -7,9 +7,13 @@ interface LiveControlProps {
   allMatches: Match[];
   activeMatch?: Match;
   onSelectMatch: (matchId: string) => void;
-  onUpdateStatus: (matchId: string, status: MatchStatus, winnerTeamId?: string) => void;
-  onSetZone: (matchId: string, zone: ZoneNumber) => void;
-  onToggleSwitch: (matchId: string) => void;
+  onUpdateStatus: (
+    matchId: string,
+    status: MatchStatus,
+    winnerTeamId?: string,
+  ) => Promise<{ success: boolean; error?: string }>;
+  onSetZone: (matchId: string, zone: ZoneNumber) => Promise<{ success: boolean; error?: string }>;
+  onToggleSwitch: (matchId: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function LiveControl({
@@ -21,6 +25,21 @@ export function LiveControl({
   onToggleSwitch,
 }: LiveControlProps) {
   const [winnerSelection, setWinnerSelection] = useState<string>("");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [savingAction, setSavingAction] = useState(false);
+
+  const runAction = async (action: () => Promise<{ success: boolean; error?: string }>) => {
+    if (savingAction) return;
+    setSavingAction(true);
+    try {
+      const result = await action();
+      setActionError(result.success ? null : (result.error ?? "The match update failed."));
+    } catch {
+      setActionError("The match update failed. Check the connection and retry.");
+    } finally {
+      setSavingAction(false);
+    }
+  };
 
   if (!activeMatch) {
     return (
@@ -38,6 +57,14 @@ export function LiveControl({
 
   return (
     <div className="space-y-6">
+      {actionError && (
+        <p
+          role="alert"
+          className="border border-hot/60 bg-hot/10 px-4 py-2 font-mono text-xs text-hot"
+        >
+          {actionError}
+        </p>
+      )}
       {/* 1. MATCH SELECTOR STRIP */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-2 border-line bg-surface p-4">
         <div>
@@ -159,29 +186,32 @@ export function LiveControl({
           </h3>
 
           <div className="flex flex-wrap gap-3">
-            {!isLive ? (
+            {activeMatch.status === "upcoming" ? (
               <button
                 type="button"
-                onClick={() => onUpdateStatus(activeMatch.id, "live")}
+                disabled={savingAction}
+                onClick={() => void runAction(() => onUpdateStatus(activeMatch.id, "live"))}
                 className="flex items-center gap-2 border-2 border-hot bg-hot px-5 py-2.5 font-type text-xs font-bold uppercase tracking-wider text-paper shadow-[3px_3px_0_var(--line)] hover:bg-hot/90 active:translate-x-0.5 active:translate-y-0.5"
               >
                 <Play size={14} />
                 <span>Set Live in Arena</span>
               </button>
-            ) : (
+            ) : isLive ? (
               <button
                 type="button"
-                onClick={() => onUpdateStatus(activeMatch.id, "upcoming")}
+                disabled={savingAction}
+                onClick={() => void runAction(() => onUpdateStatus(activeMatch.id, "upcoming"))}
                 className="flex items-center gap-2 border-2 border-sun bg-sun px-5 py-2.5 font-type text-xs font-bold uppercase tracking-wider text-ink shadow-[3px_3px_0_var(--line)] hover:bg-sun/90 active:translate-x-0.5 active:translate-y-0.5"
               >
                 <Pause size={14} />
                 <span>Pause / Revert to Standby</span>
               </button>
-            )}
+            ) : null}
 
             <div className="flex w-full items-center gap-2 pt-2 border-t border-line">
               <select
                 value={winnerSelection || activeMatch.winnerTeamId || ""}
+                disabled={savingAction}
                 onChange={(e) => setWinnerSelection(e.target.value)}
                 className="flex-1 border-2 border-line bg-canvas px-3 py-2 font-mono text-xs text-paper focus:border-sun focus:outline-none"
               >
@@ -196,7 +226,7 @@ export function LiveControl({
                 onClick={() => {
                   const winner = winnerSelection || activeMatch.winnerTeamId;
                   if (winner) {
-                    onUpdateStatus(activeMatch.id, "completed", winner);
+                    void runAction(() => onUpdateStatus(activeMatch.id, "completed", winner));
                   }
                 }}
                 className="flex items-center gap-1.5 border-2 border-line bg-canvas px-4 py-2 font-type text-xs uppercase tracking-wider text-paper hover:border-sun hover:text-sun disabled:opacity-40"
@@ -224,7 +254,8 @@ export function LiveControl({
                 <button
                   key={z}
                   type="button"
-                  onClick={() => onSetZone(activeMatch.id, z)}
+                  disabled={savingAction}
+                  onClick={() => void runAction(() => onSetZone(activeMatch.id, z))}
                   className={`border-2 py-2 font-type text-xs uppercase tracking-wider transition-colors ${
                     activeMatch.zone === z
                       ? "border-sun bg-sun text-ink font-bold shadow-[2px_2px_0_var(--line)]"
@@ -241,7 +272,8 @@ export function LiveControl({
             <span className="font-type text-xs text-mist/80">Switch Round Twist:</span>
             <button
               type="button"
-              onClick={() => onToggleSwitch(activeMatch.id)}
+              disabled={savingAction}
+              onClick={() => void runAction(() => onToggleSwitch(activeMatch.id))}
               className={`flex items-center gap-2 border-2 px-4 py-2 font-type text-xs uppercase font-bold tracking-wider transition-colors ${
                 activeMatch.switchRoundTriggered
                   ? "border-hot bg-hot text-paper shadow-[3px_3px_0_var(--line)] animate-pulse"

@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { Users, Vote, CheckCircle, Ban, Clock } from "lucide-react";
 import type { Match, VotingStatus } from "@/content/tournament";
 
 interface AudienceVotesProps {
   allMatches: Match[];
-  activeMatch?: Match;
-  onSetVoting: (matchId: string, status: VotingStatus) => void;
+  activeMatch?: Match | undefined;
+  onSetVoting: (
+    matchId: string,
+    status: VotingStatus,
+  ) => Promise<{ success: boolean; error?: string }>;
   onSelectMatch: (matchId: string) => void;
 }
 
@@ -14,6 +18,22 @@ export function AudienceVotes({
   onSetVoting,
   onSelectMatch,
 }: AudienceVotesProps) {
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [savingMatchId, setSavingMatchId] = useState<string | null>(null);
+
+  const updateVoting = async (matchId: string, status: VotingStatus) => {
+    if (savingMatchId) return;
+    setSavingMatchId(matchId);
+    try {
+      const result = await onSetVoting(matchId, status);
+      setFeedback(result.success ? null : (result.error ?? "Voting state could not be updated."));
+    } catch {
+      setFeedback("Voting state could not be updated. Check the connection and retry.");
+    } finally {
+      setSavingMatchId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Overview Banner */}
@@ -25,6 +45,15 @@ export function AudienceVotes({
           Live audience pulse, real-time percentages, and voting state toggles
         </p>
       </div>
+
+      {feedback && (
+        <p
+          role="alert"
+          className="border border-hot/60 bg-hot/10 px-4 py-2 font-mono text-xs text-hot"
+        >
+          {feedback}
+        </p>
+      )}
 
       {/* Active Match Voting Card */}
       {activeMatch && (
@@ -65,8 +94,8 @@ export function AudienceVotes({
               {/* Status change buttons */}
               <button
                 type="button"
-                onClick={() => onSetVoting(activeMatch.id, "open")}
-                disabled={activeMatch.votingStatus === "open"}
+                onClick={() => void updateVoting(activeMatch.id, "open")}
+                disabled={activeMatch.votingStatus === "open" || savingMatchId !== null}
                 className={`flex items-center gap-1.5 px-3 py-1.5 font-type text-xs uppercase tracking-wider transition-colors ${
                   activeMatch.votingStatus === "open"
                     ? "border border-sun/40 bg-sun/10 text-sun cursor-not-allowed opacity-60"
@@ -79,8 +108,8 @@ export function AudienceVotes({
 
               <button
                 type="button"
-                onClick={() => onSetVoting(activeMatch.id, "closed")}
-                disabled={activeMatch.votingStatus === "closed"}
+                onClick={() => void updateVoting(activeMatch.id, "closed")}
+                disabled={activeMatch.votingStatus === "closed" || savingMatchId !== null}
                 className={`flex items-center gap-1.5 px-3 py-1.5 font-type text-xs uppercase tracking-wider transition-colors ${
                   activeMatch.votingStatus === "closed"
                     ? "border border-line bg-surface-raised text-mist/40 cursor-not-allowed"
@@ -93,8 +122,8 @@ export function AudienceVotes({
 
               <button
                 type="button"
-                onClick={() => onSetVoting(activeMatch.id, "upcoming")}
-                disabled={activeMatch.votingStatus === "upcoming"}
+                onClick={() => void updateVoting(activeMatch.id, "upcoming")}
+                disabled={activeMatch.votingStatus === "upcoming" || savingMatchId !== null}
                 className={`flex items-center gap-1.5 px-3 py-1.5 font-type text-xs uppercase tracking-wider transition-colors ${
                   activeMatch.votingStatus === "upcoming"
                     ? "border border-line bg-surface-raised text-mist/40 cursor-not-allowed"
@@ -198,7 +227,10 @@ export function AudienceVotes({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onSetVoting(m.id, m.votingStatus === "open" ? "closed" : "open")}
+                  onClick={() =>
+                    void updateVoting(m.id, m.votingStatus === "open" ? "closed" : "open")
+                  }
+                  disabled={savingMatchId !== null}
                   className="border border-line bg-canvas px-2.5 py-1 font-type text-xs uppercase text-mist/80 hover:text-paper"
                 >
                   {m.votingStatus === "open" ? "Close" : "Open"}

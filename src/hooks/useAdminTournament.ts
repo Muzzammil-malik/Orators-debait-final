@@ -1,123 +1,205 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import {
-  type Match,
-  type MatchStatus,
-  type ScoreBreakdown,
-  type Team,
-  type TournamentTree,
-  type VotingStatus,
-  type ZoneNumber,
-  OFFICIAL_TEAMS,
-  demoTournamentData,
+import { useCallback, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type {
+  Match,
+  MatchStatus,
+  ScoreBreakdown,
+  Team,
+  TeamMember,
+  VotingStatus,
+  ZoneNumber,
 } from "@/content/tournament";
-import { TournamentAdminApi } from "@/lib/admin-api";
+import {
+  archiveTeam,
+  assignMatchTeam as saveMatchAssignment,
+  deleteMatch,
+  createMatch,
+  fetchAdminTeams,
+  fetchTournamentSnapshot,
+  saveMatchScores,
+  saveTeam,
+  setVotingStatus,
+  toggleSwitchRound,
+  updateMatchStatus,
+  updateMatchZone,
+  type MutationResult,
+} from "@/lib/tournament-data";
+import { adminTeamsQueryKey, tournamentQueryKey } from "@/lib/tournament-queries";
 
 export function useAdminTournament() {
-  const [tree, setTree] = useState<TournamentTree>(() => TournamentAdminApi.getTree());
-  const [activeMatchId, setActiveMatchId] = useState<string>("sf-2"); // Default to live match
-
-  // Listen to external tree changes
-  useEffect(() => {
-    const handleUpdate = (event: Event) => {
-      const custom = event as CustomEvent<TournamentTree>;
-      if (custom.detail) {
-        setTree(custom.detail);
-      } else {
-        setTree(TournamentAdminApi.getTree());
-      }
-    };
-
-    window.addEventListener("tournament-tree-updated", handleUpdate);
-    window.addEventListener("storage", handleUpdate);
-    return () => {
-      window.removeEventListener("tournament-tree-updated", handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
-    };
-  }, []);
+  const queryClient = useQueryClient();
+  const [activeMatchId, setActiveMatchId] = useState("");
+  const tournamentQuery = useQuery({
+    queryKey: tournamentQueryKey,
+    queryFn: fetchTournamentSnapshot,
+    staleTime: 5_000,
+    refetchInterval: 30_000,
+    retry: 2,
+  });
+  const teamsQuery = useQuery({
+    queryKey: adminTeamsQueryKey,
+    queryFn: fetchAdminTeams,
+    staleTime: 5_000,
+    retry: 1,
+  });
 
   const allMatches = useMemo<Match[]>(() => {
-    return TournamentAdminApi.getAllMatches(tree);
-  }, [tree]);
+    const tree = tournamentQuery.data?.tree;
+    return tree
+      ? [...tree.preliminaries, ...tree.semiFinals, ...(tree.final ? [tree.final] : [])]
+      : [];
+  }, [tournamentQuery.data]);
+  const activeMatch = useMemo(
+    () =>
+      allMatches.find((match) => match.id === activeMatchId) ??
+      allMatches.find((match) => match.status === "live") ??
+      allMatches[0],
+    [allMatches, activeMatchId],
+  );
 
-  const activeMatch = useMemo<Match | undefined>(() => {
-    return allMatches.find((m) => m.id === activeMatchId) || allMatches[0];
-  }, [allMatches, activeMatchId]);
+  const refresh = useCallback(
+    async (includeTeams = false) => {
+      await queryClient.invalidateQueries({ queryKey: tournamentQueryKey });
+      if (includeTeams) await queryClient.invalidateQueries({ queryKey: adminTeamsQueryKey });
+    },
+    [queryClient],
+  );
 
-  // Aggregate the 16 official teams with any dynamic team state from matches
-  const allTeams = useMemo<Team[]>(() => {
-    const teamMap = new Map<string, Team>();
-    OFFICIAL_TEAMS.forEach((t) => teamMap.set(t.id, { ...t }));
-
-    allMatches.forEach((m) => {
-      if (m.teamA) teamMap.set(m.teamA.id, { ...teamMap.get(m.teamA.id), ...m.teamA });
-      if (m.teamB) teamMap.set(m.teamB.id, { ...teamMap.get(m.teamB.id), ...m.teamB });
-    });
-
-    return Array.from(teamMap.values()).sort((a, b) => a.number - b.number);
-  }, [allMatches]);
+  const mutateAndRefresh = useCallback(
+    async (
+      mutation: () => Promise<MutationResult>,
+      includeTeams = false,
+    ): Promise<MutationResult> => {
+      try {
+        const result = await mutation();
+        if (result.success) await refresh(includeTeams);
+        return result;
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : "The request failed.",
+        };
+      }
+    },
+    [refresh],
+  );
 
   const updateScores = useCallback(
-    (matchId: string, scoreA: ScoreBreakdown, scoreB: ScoreBreakdown) => {
-      const res = TournamentAdminApi.updateMatchScores(matchId, scoreA, scoreB);
-      if (res.success) {
-        setTree(TournamentAdminApi.getTree());
-      }
-      return res;
+    async (matchId: string, scoreA: ScoreBreakdown, scoreB: ScoreBreakdown) => {
+      const match = allMatches.find((entry) => entry.id === matchId);
+      if (!match) return { success: false, error: "Match was not found." };
+      return mutateAndRefresh(() => saveMatchScores(match, scoreA, scoreB));
     },
-    [],
+    [allMatches, mutateAndRefresh],
   );
 
   const updateStatus = useCallback(
-    (matchId: string, status: MatchStatus, winnerTeamId?: string) => {
-      const res = TournamentAdminApi.updateMatchStatus(matchId, status, winnerTeamId);
-      if (res.success) {
-        setTree(TournamentAdminApi.getTree());
-      }
-      return res;
-    },
-    [],
+    (matchId: string, status: MatchStatus, winnerTeamId?: string) =>
+      mutateAndRefresh(() => updateMatchStatus(matchId, status, winnerTeamId)),
+    [mutateAndRefresh],
   );
 
-  const setZone = useCallback((matchId: string, zone: ZoneNumber) => {
-    const res = TournamentAdminApi.setMatchZone(matchId, zone);
-    if (res.success) {
-      setTree(TournamentAdminApi.getTree());
-    }
-  }, []);
+  const setZone = useCallback(
+    (matchId: string, zone: ZoneNumber) => mutateAndRefresh(() => updateMatchZone(matchId, zone)),
+    [mutateAndRefresh],
+  );
 
-  const toggleSwitch = useCallback((matchId: string) => {
-    const res = TournamentAdminApi.toggleSwitchRound(matchId);
-    if (res.success) {
-      setTree(TournamentAdminApi.getTree());
-    }
-  }, []);
+  const toggleSwitch = useCallback(
+    (matchId: string) => {
+      const match = allMatches.find((entry) => entry.id === matchId);
+      if (!match) return Promise.resolve({ success: false, error: "Match was not found." });
+      return mutateAndRefresh(() =>
+        toggleSwitchRound(matchId, Boolean(match.switchRoundTriggered)),
+      );
+    },
+    [allMatches, mutateAndRefresh],
+  );
 
-  const setVoting = useCallback((matchId: string, status: VotingStatus) => {
-    const res = TournamentAdminApi.setVotingStatus(matchId, status);
-    if (res.success) {
-      setTree(TournamentAdminApi.getTree());
-    }
-  }, []);
+  const setVoting = useCallback(
+    (matchId: string, status: VotingStatus) =>
+      mutateAndRefresh(() => setVotingStatus(matchId, status)),
+    [mutateAndRefresh],
+  );
 
-  const updateTeam = useCallback((teamId: string, data: Partial<Team>) => {
-    const res = TournamentAdminApi.updateTeam(teamId, data);
-    if (res.success) {
-      setTree(TournamentAdminApi.getTree());
-    }
-    return res;
-  }, []);
+  const updateTeam = useCallback(
+    (teamId: string, data: Partial<Team>) => {
+      const current = (teamsQuery.data ?? []).find((team) => team.id === teamId);
+      if (!current) return Promise.resolve({ success: false, error: "Team was not found." });
+      const members = data.members ?? current.members;
+      if (members.length < 3 || members.length > 5) {
+        return Promise.resolve({ success: false, error: "Teams must have 3 to 5 members." });
+      }
+      return mutateAndRefresh(
+        () =>
+          saveTeam({
+            id: teamId,
+            name: data.name ?? current.name,
+            stream: data.stream ?? current.stream,
+            status: data.status ?? current.status,
+            members,
+          }),
+        true,
+      );
+    },
+    [mutateAndRefresh, teamsQuery.data],
+  );
 
-  const resetTournament = useCallback(() => {
-    TournamentAdminApi.saveTree(demoTournamentData);
-    setTree(demoTournamentData);
-  }, []);
+  const createTeam = useCallback(
+    (data: { name: string; members: TeamMember[]; stream?: string }) =>
+      mutateAndRefresh(() => saveTeam(data), true),
+    [mutateAndRefresh],
+  );
+
+  const createMatchRecord = useCallback(
+    (data: {
+      round: MatchRound;
+      roundLabel: string;
+      stageName: string;
+      teamAId: string;
+      teamBId: string;
+      court?: string;
+      motion?: string;
+      status?: MatchStatus;
+    }) => {
+      if (!data.teamAId || !data.teamBId) {
+        return Promise.resolve({
+          success: false,
+          error: "Select both teams before creating a match.",
+        });
+      }
+      if (data.teamAId === data.teamBId) {
+        return Promise.resolve({
+          success: false,
+          error: "A match cannot include the same team twice.",
+        });
+      }
+      return mutateAndRefresh(() => createMatch(data), true);
+    },
+    [mutateAndRefresh],
+  );
+
+  const deleteTeam = useCallback(
+    (teamId: string) => mutateAndRefresh(() => archiveTeam(teamId), true),
+    [mutateAndRefresh],
+  );
+
+  const deleteMatchRecord = useCallback(
+    (matchId: string) => mutateAndRefresh(() => deleteMatch(matchId), true),
+    [mutateAndRefresh],
+  );
+
+  const assignMatchTeam = useCallback(
+    (matchId: string, side: "teamA" | "teamB", teamId: string | null) =>
+      mutateAndRefresh(() => saveMatchAssignment(matchId, side, teamId)),
+    [mutateAndRefresh],
+  );
 
   return {
-    tree,
+    tree: tournamentQuery.data?.tree,
     allMatches,
-    allTeams,
+    allTeams: teamsQuery.data ?? [],
     activeMatch,
-    activeMatchId,
+    activeMatchId: activeMatch?.id ?? "",
     setActiveMatchId,
     updateScores,
     updateStatus,
@@ -125,6 +207,13 @@ export function useAdminTournament() {
     toggleSwitch,
     setVoting,
     updateTeam,
-    resetTournament,
+    createTeam,
+    createMatch: createMatchRecord,
+    deleteMatch: deleteMatchRecord,
+    deleteTeam,
+    assignMatchTeam,
+    isLoading: tournamentQuery.isLoading || teamsQuery.isLoading,
+    error: tournamentQuery.error ?? teamsQuery.error,
+    refresh: () => refresh(true),
   };
 }

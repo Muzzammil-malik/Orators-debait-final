@@ -77,14 +77,14 @@ export function AdminLogin({ onSuccess }: AdminLoginProps) {
               htmlFor="rural-operator"
               className="block font-type text-xs uppercase tracking-wider text-mist/80"
             >
-              Operator Identifier
+              Administrator Email
             </label>
             <input
               id="rural-operator"
-              type="text"
+              type="email"
               required
-              autoComplete="username"
-              placeholder="e.g. desk-lead or operator name"
+              autoComplete="email"
+              placeholder="admin@example.com"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="mt-1.5 w-full border-2 border-line bg-canvas px-3.5 py-2.5 font-mono text-sm text-paper placeholder:text-mist/30 focus:border-sun focus:outline-none"
@@ -96,14 +96,14 @@ export function AdminLogin({ onSuccess }: AdminLoginProps) {
               htmlFor="rural-key"
               className="block font-type text-xs uppercase tracking-wider text-mist/80"
             >
-              Admin Access Key
+              Administrator Password
             </label>
             <input
               id="rural-key"
               type="password"
               required
               autoComplete="current-password"
-              placeholder="Enter operator key"
+              placeholder="Enter your password"
               value={key}
               onChange={(e) => setKey(e.target.value)}
               className="mt-1.5 w-full border-2 border-line bg-canvas px-3.5 py-2.5 font-mono text-sm text-paper placeholder:text-mist/30 focus:border-sun focus:outline-none"

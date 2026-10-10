@@ -1,21 +1,12 @@
-import { useState } from "react";
 import logoMark from "@/assets/logo-mark.png";
 import { Magnetic } from "../Magnetic";
 import { TransitionLink } from "../CinematicTransition";
 
 interface ScoreboardHeaderProps {
   hasLiveMatch: boolean;
-  dataMode: "demo" | "empty";
-  onToggleDataMode: (mode: "demo" | "empty") => void;
 }
 
-export function ScoreboardHeader({
-  hasLiveMatch,
-  dataMode,
-  onToggleDataMode,
-}: ScoreboardHeaderProps) {
-  const [showModeInfo, setShowModeInfo] = useState(false);
-
+export function ScoreboardHeader({ hasLiveMatch }: ScoreboardHeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b-2 border-ink bg-ivory/95 backdrop-blur-md">
       {/* Top Banner & Navigation */}
@@ -65,7 +56,7 @@ export function ScoreboardHeader({
           </div>
         </div>
 
-        {/* Right: Quick Anchor Links & Mode Switcher */}
+        {/* Right: Quick Anchor Links */}
         <div className="flex items-center gap-3">
           <nav className="hidden items-center gap-4 text-xs uppercase tracking-wider md:flex font-type">
             <Magnetic strength={7}>
@@ -89,23 +80,6 @@ export function ScoreboardHeader({
               </TransitionLink>
             </Magnetic>
           </nav>
-
-          {/* Mode Toggle Button */}
-          <div className="relative">
-            <Magnetic strength={8}>
-              <button
-                onClick={() => onToggleDataMode(dataMode === "demo" ? "empty" : "demo")}
-                className={`flex items-center gap-2 border-2 border-ink px-3 py-1 font-type text-xs uppercase transition-all shadow-[2px_2px_0_var(--ink)] ${
-                  dataMode === "demo"
-                    ? "bg-hot text-paper hover:bg-hot/90"
-                    : "bg-paper text-ink hover:bg-ivory"
-                }`}
-                title="Click to toggle between simulated live tournament data and official pre-tournament empty bracket"
-              >
-                <span>{dataMode === "demo" ? "⚡ Live Demo Data" : "📋 Official Empty State"}</span>
-              </button>
-            </Magnetic>
-          </div>
 
           <Magnetic strength={8}>
             <TransitionLink

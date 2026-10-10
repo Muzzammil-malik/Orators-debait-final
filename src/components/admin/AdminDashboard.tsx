@@ -1,14 +1,5 @@
 import { useState } from "react";
-import {
-  Radio,
-  FileSpreadsheet,
-  Calendar,
-  Users,
-  Vote,
-  Award,
-  RotateCcw,
-  AlertTriangle,
-} from "lucide-react";
+import { Radio, FileSpreadsheet, Calendar, Users, Vote, Award } from "lucide-react";
 import { useAdminTournament } from "@/hooks/useAdminTournament";
 import { AdminHeader } from "./AdminHeader";
 import { LiveControl } from "./LiveControl";
@@ -27,7 +18,6 @@ type AdminTab = "live" | "scores" | "matches" | "teams" | "votes" | "results";
 
 export function AdminDashboard({ operatorName, onLogout }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<AdminTab>("live");
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const {
     allMatches,
@@ -41,12 +31,19 @@ export function AdminDashboard({ operatorName, onLogout }: AdminDashboardProps) 
     toggleSwitch,
     setVoting,
     updateTeam,
-    resetTournament,
+    createTeam,
+    createMatch,
+    deleteMatch,
+    deleteTeam,
+    assignMatchTeam,
+    isLoading,
+    error,
+    refresh,
   } = useAdminTournament();
 
-  const handleReset = () => {
-    resetTournament();
-    setShowResetConfirm(false);
+  const handleSelectMatch = (matchId: string) => {
+    setActiveMatchId(matchId);
+    setActiveTab("scores");
   };
 
   return (
@@ -83,17 +80,6 @@ export function AdminDashboard({ operatorName, onLogout }: AdminDashboardProps) 
                   SWITCH BUZZER ACTIVE
                 </span>
               )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowResetConfirm(true)}
-                className="flex items-center gap-1 text-[11px] font-type uppercase text-mist/50 hover:text-hot transition-colors"
-                title="Reset tournament data to official demo state"
-              >
-                <RotateCcw size={11} /> Reset Tournament Tree
-              </button>
             </div>
           </div>
         </div>
@@ -184,6 +170,31 @@ export function AdminDashboard({ operatorName, onLogout }: AdminDashboardProps) 
 
       {/* 4. Active Tab Content Area */}
       <main className="mx-auto max-w-[1700px] p-4 md:p-8">
+        {isLoading && (
+          <p
+            role="status"
+            className="mb-4 border border-line bg-surface px-4 py-3 font-type text-xs uppercase text-mist/70"
+          >
+            Loading tournament data…
+          </p>
+        )}
+        {error && (
+          <div
+            role="alert"
+            className="mb-4 flex flex-wrap items-center justify-between gap-3 border border-hot bg-hot/10 px-4 py-3 font-type text-xs text-paper"
+          >
+            <span>
+              Tournament data could not be loaded. Check your connection or administrator session.
+            </span>
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              className="border border-hot px-3 py-1.5 font-bold uppercase hover:bg-hot"
+            >
+              Retry
+            </button>
+          </div>
+        )}
         {activeTab === "live" && (
           <LiveControl
             allMatches={allMatches}
@@ -196,19 +207,34 @@ export function AdminDashboard({ operatorName, onLogout }: AdminDashboardProps) 
         )}
 
         {activeTab === "scores" && (
-          <ScoreEntry activeMatch={activeMatch} onSaveScores={updateScores} />
+          <ScoreEntry
+            activeMatch={activeMatch}
+            onSaveScores={updateScores}
+            onUpdateStatus={updateStatus}
+          />
         )}
 
         {activeTab === "matches" && (
           <MatchManagement
             allMatches={allMatches}
+            teams={allTeams}
             activeMatchId={activeMatchId}
             onSelectMatch={setActiveMatchId}
             onUpdateStatus={updateStatus}
+            onAssignTeam={assignMatchTeam}
+            onCreateMatch={createMatch}
+            onDeleteMatch={deleteMatch}
           />
         )}
 
-        {activeTab === "teams" && <TeamManagement teams={allTeams} onUpdateTeam={updateTeam} />}
+        {activeTab === "teams" && (
+          <TeamManagement
+            teams={allTeams}
+            onCreateTeam={createTeam}
+            onUpdateTeam={updateTeam}
+            onDeleteTeam={deleteTeam}
+          />
+        )}
 
         {activeTab === "votes" && (
           <AudienceVotes
@@ -220,41 +246,9 @@ export function AdminDashboard({ operatorName, onLogout }: AdminDashboardProps) 
         )}
 
         {activeTab === "results" && (
-          <RecentResults allMatches={allMatches} onSelectMatch={setActiveMatchId} />
+          <RecentResults allMatches={allMatches} onSelectMatch={handleSelectMatch} />
         )}
       </main>
-
-      {/* Reset Confirmation Modal */}
-      {showResetConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md border-4 border-hot bg-surface p-6 shadow-[8px_8px_0_rgba(216,27,114,0.4)]">
-            <div className="flex items-center gap-2 text-hot">
-              <AlertTriangle size={20} />
-              <h3 className="display text-xl text-paper">Reset Tournament Tree?</h3>
-            </div>
-            <p className="mt-3 font-serif text-sm text-mist/80">
-              This will reset all matches, scores, and team statuses to default tournament tree
-              state. Any marks entered during this session will be restored to initial values.
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowResetConfirm(false)}
-                className="border border-line bg-surface px-4 py-2 font-type text-xs uppercase text-mist hover:text-paper"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="border-2 border-hot bg-hot px-4 py-2 font-type text-xs font-bold uppercase text-paper hover:bg-hot/90"
-              >
-                Confirm Reset
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -46,7 +46,7 @@ export function AudienceVoting({ match, userVote, onCastVote }: AudienceVotingPr
         {/* Top Disclaimer / Clear Separation Alert */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b-2 border-ink pb-4">
           <div className="flex items-center gap-2">
-            <span className="bg-ink px-2.5 py-1 font-type text-xs font-bold uppercase tracking-wider text-sun">
+            <span className="bg-ink px-2.5 py-1 font-type text-xs font-bold uppercase tracking-wider !text-white">
               AUDIENCE PULSE
             </span>
             <span className="font-type text-xs uppercase tracking-widest text-ink">
@@ -54,7 +54,7 @@ export function AudienceVoting({ match, userVote, onCastVote }: AudienceVotingPr
             </span>
           </div>
 
-          <div className="border border-ink bg-paper px-3 py-1 font-type text-xs !text-paper shadow-[2px_2px_0_var(--ink)]">
+          <div className="border border-ink bg-paper px-3 py-1 font-type text-xs !text-white shadow-[2px_2px_0_var(--ink)]">
             ⚠️ <strong>NOTE:</strong> Official judge scoring (Content / Strategy / Style) is
             independent and does not alter based on audience polling.
           </div>
@@ -219,7 +219,7 @@ export function AudienceVoting({ match, userVote, onCastVote }: AudienceVotingPr
         {/* State: VOTING CLOSED */}
         {hasMatch && isVotingClosed && (
           <div className="border-3 border-ink bg-paper p-8 shadow-[6px_6px_0_var(--ink)]">
-            <div className="mb-4 inline-block bg-ink px-3 py-1 font-type text-xs font-bold uppercase tracking-wider text-sun">
+            <div className="mb-4 inline-block bg-ink px-3 py-1 font-type text-xs font-bold uppercase tracking-wider !text-white">
               AUDIENCE VOTING CLOSED FOR THIS MATCH
             </div>
             <h3 className="display text-3xl !text-paper md:text-4xl">

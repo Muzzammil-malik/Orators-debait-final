@@ -71,7 +71,7 @@ export function TournamentBracket({
           aria-label="Bracket stages"
         >
           {[
-            { id: "prelims", label: "Preliminaries", count: 8 },
+            { id: "prelims", label: "Preliminaries", count: preliminaries.length },
             { id: "sf", label: "Semifinals", count: semiFinals.length },
             { id: "final", label: "Championship Final", count: final ? 1 : 0 },
           ].map((tab) => (
@@ -102,7 +102,7 @@ export function TournamentBracket({
                 <span className="text-[10px] opacity-70">DAY 01 · MATCHES 01–04</span>
               </div>
               <div className="border-b-2 border-ink bg-paper/70 py-1.5 px-1 leading-tight">
-                SEMIFINALS · A
+                SEMIFINAL GROUP A
                 <br />
                 <span className="text-[10px] opacity-70">
                   {semiFinalsLeft.length} {semiFinalsLeft.length === 1 ? "MATCH" : "MATCHES"}
@@ -114,7 +114,7 @@ export function TournamentBracket({
                 <span className="text-[10px] opacity-80">CHAMPIONSHIP DEBATE</span>
               </div>
               <div className="border-b-2 border-ink bg-paper/70 py-1.5 px-1 leading-tight">
-                SEMIFINALS · B
+                SEMIFINAL GROUP B
                 <br />
                 <span className="text-[10px] opacity-70">
                   {semiFinalsRight.length} {semiFinalsRight.length === 1 ? "MATCH" : "MATCHES"}
@@ -135,66 +135,90 @@ export function TournamentBracket({
                 style={{ overflow: "visible" }}
                 aria-hidden="true"
               >
-                {/* Connectors: Left Prelims to SF 1 */}
+                {/* Preliminary winners 1–4 feed semifinal group A. */}
                 <path
-                  d="M 23% 13% L 25% 13% L 25% 50% L 27% 50%"
+                  d="M 23% 13% L 25% 13% L 25% 37% L 27% 37%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 23% 38% L 25% 38% L 25% 50% L 27% 50%"
+                  d="M 23% 38% L 25% 38% L 25% 37% L 27% 37%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 23% 63% L 25% 63% L 25% 50% L 27% 50%"
+                  d="M 23% 63% L 25% 63% L 25% 63% L 27% 63%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 23% 88% L 25% 88% L 25% 50% L 27% 50%"
+                  d="M 23% 88% L 25% 88% L 25% 63% L 27% 63%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
 
-                {/* Connector: SF 1 to Grand Final */}
-                <path d="M 44% 50% L 47% 50%" fill="none" stroke="var(--ink)" strokeWidth="2.5" />
+                {/* Semifinal winners advance to the manually assigned Grand Final slots. */}
+                <path
+                  d="M 44% 37% L 46% 37% L 46% 50% L 47% 50%"
+                  fill="none"
+                  stroke="var(--ink)"
+                  strokeWidth="1.8"
+                  strokeDasharray="4 2"
+                />
+                <path
+                  d="M 44% 63% L 46% 63% L 46% 50% L 47% 50%"
+                  fill="none"
+                  stroke="var(--ink)"
+                  strokeWidth="1.8"
+                  strokeDasharray="4 2"
+                />
 
-                {/* Connector: SF 2 to Grand Final */}
-                <path d="M 56% 50% L 53% 50%" fill="none" stroke="var(--ink)" strokeWidth="2.5" />
-
-                {/* Connectors: Right Prelims to SF 2 */}
+                {/* Preliminary winners 5–8 feed semifinal group B. */}
                 <path
-                  d="M 77% 13% L 75% 13% L 75% 50% L 73% 50%"
+                  d="M 77% 13% L 75% 13% L 75% 37% L 73% 37%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 77% 38% L 75% 38% L 75% 50% L 73% 50%"
+                  d="M 77% 38% L 75% 38% L 75% 37% L 73% 37%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 77% 63% L 75% 63% L 75% 50% L 73% 50%"
+                  d="M 77% 63% L 75% 63% L 75% 63% L 73% 63%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 77% 88% L 75% 88% L 75% 50% L 73% 50%"
+                  d="M 77% 88% L 75% 88% L 75% 63% L 73% 63%"
+                  fill="none"
+                  stroke="var(--ink)"
+                  strokeWidth="1.8"
+                  strokeDasharray="4 2"
+                />
+                <path
+                  d="M 56% 37% L 54% 37% L 54% 50% L 53% 50%"
+                  fill="none"
+                  stroke="var(--ink)"
+                  strokeWidth="1.8"
+                  strokeDasharray="4 2"
+                />
+                <path
+                  d="M 56% 63% L 54% 63% L 54% 50% L 53% 50%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
@@ -380,8 +404,8 @@ export function TournamentBracket({
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-ink/20 pt-4 text-xs font-type text-muted-foreground">
           <div>
             💡 <strong className="text-ink">Official Structure:</strong> 16 Teams → 8 Preliminaries
-            → Top 8 Evaluated → {semiFinals.length} Semifinal Matches → 1 Grand Final. Click any
-            match to inspect its live score breakdown.
+            → Top 8 Evaluated → {semiFinals.length} Semifinal Matches → Admin-assigned Grand
+            Final. Click any match to inspect its live score breakdown.
           </div>
           <div className="text-stone">
             All match results certified by Orators&rsquo; Club Tabulation Desk.
@@ -420,26 +444,30 @@ function BracketMatchCard({
 
   const isEliminatedA = isCompleted && !isWinnerA && !!match.winnerTeamId;
   const isEliminatedB = isCompleted && !isWinnerB && !!match.winnerTeamId;
+  const waitingLabel =
+    match.round === "semifinal"
+      ? "AWAITING PRELIMINARY WINNER"
+      : match.round === "final"
+        ? "AWAITING ADMIN ASSIGNMENT"
+        : "TBD";
 
   return (
     <div
       onClick={onSelect}
       className={`group relative cursor-pointer border-2 transition-all ${
         isLive
-          ? "border-hot bg-paper shadow-[3px_3px_0_var(--hot)] ring-1 ring-hot/30"
+          ? "border-hot bg-paper shadow-[3px_3px_0_var(--hot)] ring-1 ring-hot/30 hover:bg-ink"
           : isSelected
-            ? "border-ink bg-sun shadow-[3px_3px_0_var(--ink)]"
-            : "border-ink bg-paper shadow-[2px_2px_0_var(--ink)] hover:-translate-y-0.5 hover:shadow-[4px_4px_0_var(--ink)]"
+            ? "border-hot bg-ink shadow-[3px_3px_0_var(--hot)]"
+            : "border-ink bg-paper shadow-[2px_2px_0_var(--ink)] hover:-translate-y-0.5 hover:border-hot hover:bg-ink hover:shadow-[4px_4px_0_var(--hot)]"
       }`}
     >
       {/* Top Match Header Strip */}
       <div
         className={`flex items-center justify-between border-b-2 border-ink px-2 py-0.5 font-type text-[10px] uppercase tracking-wider ${
-          isLive
-            ? "bg-hot text-paper font-bold"
-            : isFinal
-              ? "bg-sun text-ink font-bold"
-              : "bg-ivory text-ink"
+          isSelected
+            ? "bg-ink text-white font-bold"
+            : `${isLive ? "bg-hot text-paper font-bold" : isFinal ? "bg-sun text-ink font-bold" : "bg-ivory text-ink"} group-hover:bg-ink group-hover:text-white`
         }`}
       >
         <span className="font-bold truncate">{match.roundLabel}</span>
@@ -449,11 +477,21 @@ function BracketMatchCard({
           </span>
         )}
         {isCompleted && (
-          <span className="flex items-center gap-1 rounded-full border border-emerald-500/60 bg-emerald-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.18em] text-emerald-300 shrink-0">
+          <span
+            className={`flex items-center gap-1 rounded-full border border-emerald-500/60 bg-emerald-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.18em] shrink-0 ${
+              isSelected ? "text-white" : "text-emerald-300 group-hover:text-white"
+            }`}
+          >
             ✓
           </span>
         )}
-        {!isLive && !isCompleted && <span className="text-[9px] text-stone shrink-0">–</span>}
+        {!isLive && !isCompleted && (
+          <span
+            className={`text-[9px] shrink-0 ${isSelected ? "text-white" : "text-stone group-hover:text-white"}`}
+          >
+            –
+          </span>
+        )}
       </div>
 
       {/* Team A Row */}
@@ -461,38 +499,54 @@ function BracketMatchCard({
         onMouseEnter={() => match.teamA && onHoverTeam(match.teamA.id)}
         onMouseLeave={() => onHoverTeam(null)}
         className={`flex items-center justify-between border-b border-ink/20 px-2 py-1.5 transition-colors ${
-          isWinnerA ? "bg-sun/40 font-bold" : ""
-        } ${isEliminatedA ? "bg-ivory/15" : ""} ${
+          isWinnerA
+            ? "bg-sun/40 font-bold group-hover:bg-sun/40"
+            : isSelected
+              ? "bg-ink"
+              : "group-hover:bg-ink"
+        } ${!isWinnerA && isEliminatedA ? "bg-ivory/15" : ""} ${
           hoveredTeamId && match.teamA && hoveredTeamId === match.teamA.id ? "bg-sun/60" : ""
         }`}
       >
         <div className="flex items-center gap-1.5 overflow-hidden min-w-0">
           <span
             className={`display flex h-4 w-4 shrink-0 items-center justify-center border border-ink text-[10px] ${
-              isWinnerA ? "bg-ink text-sun" : "bg-paper text-ink"
+              isWinnerA
+                ? "bg-ink text-sun"
+                : isSelected
+                ? "bg-ink text-white border-white"
+                : "bg-paper text-ink group-hover:bg-ink group-hover:text-white group-hover:border-white"
             }`}
           >
             {match.teamA ? String(match.teamA.number).padStart(2, "0") : "–"}
           </span>
           <span
             className={`truncate font-type text-[11px] uppercase leading-none ${
-              isWinnerA ? "text-ink font-bold" : "font-semibold text-white"
+              isSelected
+                ? "text-white font-bold"
+                : `${isWinnerA ? "text-ink font-bold" : "font-semibold text-white"} group-hover:text-white`
             }`}
           >
-            {match.teamA ? match.teamA.name : "TBD"}
+            {match.teamA ? match.teamA.name : waitingLabel}
           </span>
         </div>
         <div className="shrink-0 pl-1">
           {match.scoreA ? (
             <span
               className={`display text-base leading-none ${
-                isWinnerA ? "text-ink font-bold" : "font-bold text-white"
+                isSelected
+                  ? "text-white font-bold"
+                  : `${isWinnerA ? "text-ink font-bold" : "font-bold text-white"} group-hover:text-white`
               }`}
             >
               {match.scoreA.total}
             </span>
           ) : (
-            <span className="font-type text-[10px] text-stone">--</span>
+            <span
+              className={`font-type text-[10px] ${isSelected ? "text-white" : "text-stone group-hover:text-white"}`}
+            >
+              --
+            </span>
           )}
         </div>
       </div>
@@ -502,44 +556,66 @@ function BracketMatchCard({
         onMouseEnter={() => match.teamB && onHoverTeam(match.teamB.id)}
         onMouseLeave={() => onHoverTeam(null)}
         className={`flex items-center justify-between px-2 py-1.5 transition-colors ${
-          isWinnerB ? "bg-sun/40 font-bold" : ""
-        } ${isEliminatedB ? "bg-ivory/15" : ""} ${
+          isWinnerB
+            ? "bg-sun/40 font-bold group-hover:bg-sun/40"
+            : isSelected
+              ? "bg-ink"
+              : "group-hover:bg-ink"
+        } ${!isWinnerB && isEliminatedB ? "bg-ivory/15" : ""} ${
           hoveredTeamId && match.teamB && hoveredTeamId === match.teamB.id ? "bg-sun/60" : ""
         }`}
       >
         <div className="flex items-center gap-1.5 overflow-hidden min-w-0">
           <span
             className={`display flex h-4 w-4 shrink-0 items-center justify-center border border-ink text-[10px] ${
-              isWinnerB ? "bg-ink text-sun" : "bg-paper text-ink"
+              isWinnerB
+                ? "bg-ink text-sun"
+                : isSelected
+                ? "bg-ink text-white border-white"
+                : "bg-paper text-ink group-hover:bg-ink group-hover:text-white group-hover:border-white"
             }`}
           >
             {match.teamB ? String(match.teamB.number).padStart(2, "0") : "–"}
           </span>
           <span
             className={`truncate font-type text-[11px] uppercase leading-none ${
-              isWinnerB ? "text-ink font-bold" : "font-semibold text-white"
+              isSelected
+                ? "text-white font-bold"
+                : `${isWinnerB ? "text-ink font-bold" : "font-semibold text-white"} group-hover:text-white`
             }`}
           >
-            {match.teamB ? match.teamB.name : "TBD"}
+            {match.teamB ? match.teamB.name : waitingLabel}
           </span>
         </div>
         <div className="shrink-0 pl-1">
           {match.scoreB ? (
             <span
               className={`display text-base leading-none ${
-                isWinnerB ? "text-ink font-bold" : "font-bold text-white"
+                isSelected
+                  ? "text-white font-bold"
+                  : `${isWinnerB ? "text-ink font-bold" : "font-bold text-white"} group-hover:text-white`
               }`}
             >
               {match.scoreB.total}
             </span>
           ) : (
-            <span className="font-type text-[10px] text-stone">--</span>
+            <span
+              className={`font-type text-[10px] ${isSelected ? "text-white" : "text-stone group-hover:text-white"}`}
+            >
+              --
+            </span>
           )}
         </div>
       </div>
 
       {/* Footer Details strip */}
-      <div className="flex items-center justify-between border-t border-ink/20 bg-ivory/60 px-2 py-0.5 font-type text-[9px] text-muted-foreground">
+      <div
+        className={`flex items-center justify-between border-t border-ink/20 px-2 py-0.5 font-type text-[9px] ${
+          isSelected
+            ? "bg-ink text-white"
+            : "bg-ivory/60 text-muted-foreground group-hover:bg-ink group-hover:text-white"
+        }`}
+      >
         <span className="truncate">{match.scheduledTime || match.court}</span>
         <button
           type="button"
@@ -547,7 +623,9 @@ function BracketMatchCard({
             e.stopPropagation();
             onOpenModal();
           }}
-          className="text-ink underline hover:text-hot shrink-0 ml-1"
+          className={`underline shrink-0 ml-1 hover:text-hot ${
+            isSelected ? "text-white" : "text-ink group-hover:text-white"
+          }`}
         >
           ↗
         </button>

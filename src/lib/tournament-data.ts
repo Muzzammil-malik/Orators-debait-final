@@ -12,6 +12,7 @@ import type {
 } from "@/content/tournament";
 import type { Database } from "@/lib/database.types";
 import { requireSupabase } from "@/lib/supabase";
+import { buildTournamentTree } from "@/lib/tournament-bracket";
 
 type TeamRow = Database["public"]["Tables"]["teams"]["Row"];
 type MatchRow = Database["public"]["Tables"]["matches"]["Row"];
@@ -107,18 +108,7 @@ const buildTree = (
   const scores = new Map(scoreRows.map((row) => [`${row.match_id}:${row.side}`, row]));
   const voteTotals = new Map(voteRows.map((row) => [row.match_id, row]));
   const matches = matchRows.map((row) => toMatch(row, teams, scores, voteTotals));
-  const preliminaries = matches.filter((match) => match.round === "preliminary");
-  const semiFinals = matches.filter((match) => match.round === "semifinal");
-  const finals = matches.filter((match) => match.round === "final");
-  const final = finals[0];
-
-  const champion = final?.winnerTeamId ? teams.get(final.winnerTeamId) : undefined;
-  return {
-    preliminaries,
-    semiFinals,
-    ...(final ? { final } : {}),
-    ...(champion ? { champion } : {}),
-  };
+  return buildTournamentTree(matches);
 };
 
 export async function fetchTournamentSnapshot(): Promise<TournamentSnapshot> {

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Calendar, Clock, MapPin, ChevronRight, Radio, CheckCircle2, Trash2 } from "lucide-react";
 import type { Match, MatchRound, MatchStatus, Team } from "@/content/tournament";
+import { formatMatchLabel, formatMatchStageName } from "@/lib/tournament-bracket";
 
 interface MatchManagementProps {
   allMatches: Match[];
@@ -97,10 +98,12 @@ export function MatchManagement({
       setFeedback("Choose two different teams before creating a match.");
       return;
     }
+    const roundNumber =
+      allMatches.filter((match) => match.round === newMatch.round).length + 1;
     const result = await onCreateMatch({
       round: newMatch.round,
-      roundLabel: newMatch.roundLabel,
-      stageName: newMatch.stageName,
+      roundLabel: formatMatchLabel(newMatch.round, roundNumber),
+      stageName: formatMatchStageName(newMatch.round, roundNumber),
       teamAId: newMatch.teamAId,
       teamBId: newMatch.teamBId,
       court: newMatch.court || undefined,
@@ -211,18 +214,14 @@ export function MatchManagement({
                   setNewMatch((current) => ({
                     ...current,
                     round: nextRound,
-                    roundLabel:
-                      nextRound === "preliminary"
-                        ? `Prelim ${String(allMatches.filter((match) => match.round === "preliminary").length + 1).padStart(2, "0")}`
-                        : nextRound === "semifinal"
-                          ? `Semifinal ${String(allMatches.filter((match) => match.round === "semifinal").length + 1).padStart(2, "0")}`
-                          : "Grand Final",
-                    stageName:
-                      nextRound === "preliminary"
-                        ? `Preliminaries · Match ${String(allMatches.filter((match) => match.round === "preliminary").length + 1).padStart(2, "0")}`
-                        : nextRound === "semifinal"
-                          ? `Final Four · Match ${String(allMatches.filter((match) => match.round === "semifinal").length + 1).padStart(2, "0")}`
-                          : "Championship Debate",
+                    roundLabel: formatMatchLabel(
+                      nextRound,
+                      allMatches.filter((match) => match.round === nextRound).length + 1,
+                    ),
+                    stageName: formatMatchStageName(
+                      nextRound,
+                      allMatches.filter((match) => match.round === nextRound).length + 1,
+                    ),
                   }));
                 }}
                 className="border border-line bg-canvas px-2 py-2 font-mono text-xs text-paper focus:border-sun focus:outline-none"

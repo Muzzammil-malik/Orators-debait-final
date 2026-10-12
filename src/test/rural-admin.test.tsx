@@ -228,11 +228,12 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
     await waitFor(() =>
       expect(onCreateMatch).toHaveBeenCalledWith({
         round: "preliminary",
-        roundLabel: "Prelim 01",
+        roundLabel: "PRELIM 01",
         stageName: "Preliminaries · Match 01",
         teamAId: "test-team-1",
         teamBId: "test-team-2",
         court: "Court 1",
+        motion: undefined,
         status: "upcoming",
       }),
     );
@@ -327,6 +328,99 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
     expect(desktop.getByText(final.roundLabel)).toBeInTheDocument();
   });
 
+  it("shows waiting labels for unresolved semifinal qualifiers and final assignments", () => {
+    const semifinal = {
+      ...makeMatch(),
+      round: "semifinal" as const,
+      teamA: undefined,
+      teamB: undefined,
+    };
+    const final = {
+      ...makeMatch(),
+      round: "final" as const,
+      teamA: undefined,
+      teamB: undefined,
+    };
+    const { container } = render(
+      <TournamentBracket
+        tree={{ preliminaries: [], semiFinals: [semifinal], final }}
+        onSelectMatch={vi.fn()}
+        onOpenMatchModal={vi.fn()}
+      />,
+    );
+    const desktopBracket = container.querySelector(".hidden.lg\\:block");
+
+    if (!desktopBracket) throw new Error("Desktop tournament bracket was not rendered.");
+    const desktop = within(desktopBracket);
+    expect(desktop.getAllByText("AWAITING PRELIMINARY WINNER")).toHaveLength(2);
+    expect(desktop.getAllByText("AWAITING ADMIN ASSIGNMENT")).toHaveLength(2);
+  });
+
+  it("keeps all match-card text white when the match is selected or hovered", () => {
+    const match = {
+      ...makeMatch(),
+      status: "completed" as const,
+      winnerTeamId: "test-team-1",
+      scoreA: { content: 30, strategy: 20, style: 20, total: 70 },
+      scoreB: { content: 25, strategy: 20, style: 20, total: 65 },
+      court: "Court 1",
+    };
+    const { container } = render(
+      <TournamentBracket
+        tree={{ preliminaries: [], semiFinals: [match] }}
+        selectedMatchId={match.id}
+        onSelectMatch={vi.fn()}
+        onOpenMatchModal={vi.fn()}
+      />,
+    );
+    const desktopBracket = container.querySelector(".hidden.lg\\:block");
+
+    if (!desktopBracket) throw new Error("Desktop tournament bracket was not rendered.");
+    const desktop = within(desktopBracket);
+    const roundName = desktop.getByText(match.roundLabel);
+    const matchCard = roundName.closest(".group");
+
+    if (!matchCard) throw new Error("Selected match card was not rendered.");
+    expect(roundName.parentElement).toHaveClass("bg-ink", "text-white");
+    expect(desktop.getByText(match.teamA!.name)).toHaveClass("text-white");
+    expect(desktop.getByText(match.teamB!.name)).toHaveClass("text-white");
+    expect(desktop.getByText(match.teamA!.name).parentElement?.parentElement).toHaveClass(
+      "bg-sun/40",
+    );
+    expect(
+      desktop.getByText(match.teamA!.name).parentElement?.querySelector("span"),
+    ).toHaveClass("bg-ink", "text-sun");
+    expect(desktop.getByText("Court 1").parentElement).toHaveClass("bg-ink", "text-white");
+
+    const unselectedMatch = { ...match, id: "unselected-match" };
+    const { container: unselectedContainer } = render(
+      <TournamentBracket
+        tree={{ preliminaries: [], semiFinals: [unselectedMatch] }}
+        onSelectMatch={vi.fn()}
+        onOpenMatchModal={vi.fn()}
+      />,
+    );
+    const unselectedDesktop = unselectedContainer.querySelector(".hidden.lg\\:block");
+
+    if (!unselectedDesktop) throw new Error("Desktop tournament bracket was not rendered.");
+    const unselected = within(unselectedDesktop);
+    expect(unselected.getByText(unselectedMatch.roundLabel).parentElement).toHaveClass(
+      "group-hover:text-white",
+    );
+    expect(
+      unselected.getByText(unselectedMatch.teamA!.name).parentElement?.parentElement,
+    ).toHaveClass("bg-sun/40", "group-hover:bg-sun/40");
+    expect(
+      unselected.getByText(unselectedMatch.teamA!.name).parentElement?.querySelector("span"),
+    ).toHaveClass("bg-ink", "text-sun");
+    expect(unselected.getByText(unselectedMatch.teamB!.name)).toHaveClass(
+      "group-hover:text-white",
+    );
+    expect(unselected.getByText("Court 1").parentElement).toHaveClass(
+      "group-hover:text-white",
+    );
+  });
+
   it("reports safe-archive errors and leaves the confirmation open for resolution", async () => {
     const removeTeam = vi.fn().mockResolvedValue({
       success: false,
@@ -361,5 +455,20 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(/already been recorded/i),
     );
     expect(castVote).toHaveBeenCalledWith(match.id, match.teamA!.id);
+  });
+
+  it("keeps audience pulse, note, and voting-closed labels white", () => {
+    const closedMatch = {
+      ...makeMatch(),
+      status: "completed" as const,
+      votingStatus: "closed" as const,
+    };
+    render(<AudienceVoting match={closedMatch} onCastVote={vi.fn()} />);
+
+    expect(screen.getByText("AUDIENCE PULSE")).toHaveClass("!text-white");
+    expect(screen.getByText(/NOTE:/).parentElement).toHaveClass("!text-white");
+    expect(screen.getByText("AUDIENCE VOTING CLOSED FOR THIS MATCH")).toHaveClass(
+      "!text-white",
+    );
   });
 });

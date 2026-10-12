@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { Match, Team } from "@/content/tournament";
 import { AdminAuthService } from "@/lib/admin-api";
 import { AdminLogin } from "@/components/admin/AdminLogin";
@@ -273,6 +273,58 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
 
     expect(screen.getByRole("region", { name: "Tournament Bracket" })).toBeInTheDocument();
     expect(screen.queryByText("CHAMPION")).not.toBeInTheDocument();
+  });
+
+  it("renders every configured semifinal with its teams and scores in the desktop bracket", () => {
+    const preliminaries = Array.from({ length: 8 }, (_, index) => ({
+      ...makeMatch(),
+      id: `preliminary-${index + 1}`,
+      roundLabel: `Prelim ${index + 1}`,
+    }));
+    const semiFinals = Array.from({ length: 4 }, (_, index) => ({
+      ...makeMatch(),
+      id: `semifinal-${index + 1}`,
+      matchNumber: index + 9,
+      round: "semifinal" as const,
+      roundLabel: `Semifinal ${index + 1}`,
+      stageName: `Semifinal Match ${index + 1}`,
+      teamA: makeTeam(20 + index * 2 + 1),
+      teamB: makeTeam(20 + index * 2 + 2),
+      scoreA: { content: 30, strategy: 20, style: 20, total: 70 + index },
+      scoreB: { content: 25, strategy: 20, style: 20, total: 65 + index },
+      court: `Court ${index + 1}`,
+    }));
+    const final = {
+      ...makeMatch(),
+      id: "championship-final",
+      round: "final" as const,
+      roundLabel: "Championship Final",
+    };
+    const { container } = render(
+      <TournamentBracket
+        tree={{ preliminaries, semiFinals, final }}
+        onSelectMatch={vi.fn()}
+        onOpenMatchModal={vi.fn()}
+      />,
+    );
+    const desktopBracket = Array.from(container.querySelectorAll("div")).find(
+      (element) => element.classList.contains("hidden") && element.classList.contains("lg:block"),
+    );
+
+    if (!desktopBracket) throw new Error("Desktop tournament bracket was not rendered.");
+    const desktop = within(desktopBracket);
+    for (const match of preliminaries) {
+      expect(desktop.getByText(match.roundLabel)).toBeInTheDocument();
+    }
+    for (const match of semiFinals) {
+      expect(desktop.getByText(match.roundLabel)).toBeInTheDocument();
+      expect(desktop.getByText(match.teamA!.name)).toBeInTheDocument();
+      expect(desktop.getByText(match.teamB!.name)).toBeInTheDocument();
+      expect(desktop.getByText(String(match.scoreA!.total))).toBeInTheDocument();
+      expect(desktop.getByText(String(match.scoreB!.total))).toBeInTheDocument();
+      expect(desktop.getByText(match.court!)).toBeInTheDocument();
+    }
+    expect(desktop.getByText(final.roundLabel)).toBeInTheDocument();
   });
 
   it("reports safe-archive errors and leaves the confirmation open for resolution", async () => {

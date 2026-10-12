@@ -25,9 +25,9 @@ export function TournamentBracket({
   const prelimsLeft = preliminaries.slice(0, 4); // PR 01, PR 02, PR 03, PR 04
   const prelimsRight = preliminaries.slice(4, 8); // PR 05, PR 06, PR 07, PR 08
 
-  // 2 Semifinals: SF 1 (left), SF 2 (right)
-  const sfLeft = semiFinals[0];
-  const sfRight = semiFinals[1];
+  const semifinalSplitIndex = Math.ceil(semiFinals.length / 2);
+  const semiFinalsLeft = semiFinals.slice(0, semifinalSplitIndex);
+  const semiFinalsRight = semiFinals.slice(semifinalSplitIndex);
 
   return (
     <section
@@ -72,7 +72,7 @@ export function TournamentBracket({
         >
           {[
             { id: "prelims", label: "Preliminaries", count: 8 },
-            { id: "sf", label: "Semifinals (Final 4)", count: 2 },
+            { id: "sf", label: "Semifinals", count: semiFinals.length },
             { id: "final", label: "Championship Final", count: final ? 1 : 0 },
           ].map((tab) => (
             <button
@@ -91,7 +91,7 @@ export function TournamentBracket({
           ))}
         </div>
 
-        {/* DESKTOP TOURNAMENT TREE (5-Column Symmetrical Layout: Prelims Left -> SF 1 -> Grand Final & Champion -> SF 2 -> Prelims Right) */}
+        {/* DESKTOP TOURNAMENT TREE (Prelims Left -> Semifinals -> Grand Final -> Semifinals -> Prelims Right) */}
         <div className="hidden lg:block w-full overflow-hidden pb-6">
           <div className="w-full">
             {/* Column Titles */}
@@ -102,19 +102,23 @@ export function TournamentBracket({
                 <span className="text-[10px] opacity-70">DAY 01 · MATCHES 01–04</span>
               </div>
               <div className="border-b-2 border-ink bg-paper/70 py-1.5 px-1 leading-tight">
-                SEMIFINAL 01
+                SEMIFINALS · A
                 <br />
-                <span className="text-[10px] opacity-70">FINAL FOUR · MATCH 09</span>
+                <span className="text-[10px] opacity-70">
+                  {semiFinalsLeft.length} {semiFinalsLeft.length === 1 ? "MATCH" : "MATCHES"}
+                </span>
               </div>
-              <div className="border-b-2 border-hot bg-sun/60 py-1.5 px-1 text-hot leading-tight">
+              <div className="border-b-2 border-hot bg-sun/60 py-1.5 px-1 text-white leading-tight">
                 GRAND FINAL &amp; TITLE
                 <br />
                 <span className="text-[10px] opacity-80">CHAMPIONSHIP DEBATE</span>
               </div>
               <div className="border-b-2 border-ink bg-paper/70 py-1.5 px-1 leading-tight">
-                SEMIFINAL 02
+                SEMIFINALS · B
                 <br />
-                <span className="text-[10px] opacity-70">FINAL FOUR · MATCH 10</span>
+                <span className="text-[10px] opacity-70">
+                  {semiFinalsRight.length} {semiFinalsRight.length === 1 ? "MATCH" : "MATCHES"}
+                </span>
               </div>
               <div className="border-b-2 border-ink bg-paper/70 py-1.5 px-1 leading-tight">
                 PRELIMINARIES
@@ -214,18 +218,19 @@ export function TournamentBracket({
                 ))}
               </div>
 
-              {/* Column 2: Semifinal Left (SF 1) */}
-              <div className="relative z-10 flex flex-col justify-center py-3">
-                {sfLeft && (
+              {/* Column 2: Semifinals */}
+              <div className="relative z-10 flex flex-col justify-center gap-2.5 py-3">
+                {semiFinalsLeft.map((match) => (
                   <BracketMatchCard
-                    match={sfLeft}
-                    isSelected={selectedMatchId === sfLeft.id}
+                    key={match.id}
+                    match={match}
+                    isSelected={selectedMatchId === match.id}
                     hoveredTeamId={hoveredTeamId}
                     onHoverTeam={setHoveredTeamId}
-                    onSelect={() => onSelectMatch(sfLeft.id)}
-                    onOpenModal={() => onOpenMatchModal(sfLeft.id)}
+                    onSelect={() => onSelectMatch(match.id)}
+                    onOpenModal={() => onOpenMatchModal(match.id)}
                   />
-                )}
+                ))}
               </div>
 
               {/* Column 3: Center Grand Final & Champion Trophy */}
@@ -248,18 +253,19 @@ export function TournamentBracket({
                 )}
               </div>
 
-              {/* Column 4: Semifinal Right (SF 2) */}
-              <div className="relative z-10 flex flex-col justify-center py-3">
-                {sfRight && (
+              {/* Column 4: Semifinals */}
+              <div className="relative z-10 flex flex-col justify-center gap-2.5 py-3">
+                {semiFinalsRight.map((match) => (
                   <BracketMatchCard
-                    match={sfRight}
-                    isSelected={selectedMatchId === sfRight.id}
+                    key={match.id}
+                    match={match}
+                    isSelected={selectedMatchId === match.id}
                     hoveredTeamId={hoveredTeamId}
                     onHoverTeam={setHoveredTeamId}
-                    onSelect={() => onSelectMatch(sfRight.id)}
-                    onOpenModal={() => onOpenMatchModal(sfRight.id)}
+                    onSelect={() => onSelectMatch(match.id)}
+                    onOpenModal={() => onOpenMatchModal(match.id)}
                   />
-                )}
+                ))}
               </div>
 
               {/* Column 5: Preliminaries Right (PR 5 to 8) */}
@@ -330,7 +336,7 @@ export function TournamentBracket({
           {mobileStage === "sf" && (
             <div className="space-y-4">
               <div className="font-type text-xs uppercase tracking-widest text-muted-foreground pb-2 border-b border-ink/20">
-                Final Four Semifinals (Winners Advance to Championship Final)
+                Semifinals (Winners Advance to Championship Final)
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 {semiFinals.map((match) => (
@@ -374,8 +380,8 @@ export function TournamentBracket({
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-ink/20 pt-4 text-xs font-type text-muted-foreground">
           <div>
             💡 <strong className="text-ink">Official Structure:</strong> 16 Teams → 8 Preliminaries
-            → Top 8 Evaluated → 2 Semifinals (Final Four) → 1 Grand Final. Click any match to
-            inspect its live score breakdown.
+            → Top 8 Evaluated → {semiFinals.length} Semifinal Matches → 1 Grand Final. Click any
+            match to inspect its live score breakdown.
           </div>
           <div className="text-stone">
             All match results certified by Orators&rsquo; Club Tabulation Desk.

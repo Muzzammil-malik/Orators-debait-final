@@ -98,8 +98,8 @@ function ScoreboardPage() {
               </h1>
               <p className="mt-3 font-serif text-lg md:text-xl text-ink/80 max-w-2xl">
                 Real-time tournament progression, judge scoring, and audience sentiment for
-                DE&rsquo;BAIT. 16 teams, 8 preliminary rounds, Top 8 evaluation, 2 semifinals, and 1
-                grand championship final.
+                DE&rsquo;BAIT. 16 teams, 8 preliminary rounds, Top 8 evaluation,{" "}
+                {tree?.semiFinals.length ?? 0} semifinal matches, and 1 grand championship final.
               </p>
             </div>
 

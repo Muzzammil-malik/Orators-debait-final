@@ -456,7 +456,7 @@ function BracketMatchCard({
         onMouseLeave={() => onHoverTeam(null)}
         className={`flex items-center justify-between border-b border-ink/20 px-2 py-1.5 transition-colors ${
           isWinnerA ? "bg-sun/40 font-bold" : ""
-        } ${isEliminatedA ? "opacity-50 bg-ivory/50" : ""} ${
+        } ${isEliminatedA ? "bg-ivory/15" : ""} ${
           hoveredTeamId && match.teamA && hoveredTeamId === match.teamA.id ? "bg-sun/60" : ""
         }`}
       >
@@ -468,7 +468,11 @@ function BracketMatchCard({
           >
             {match.teamA ? String(match.teamA.number).padStart(2, "0") : "–"}
           </span>
-          <span className="truncate font-type text-[10px] uppercase font-medium text-ink leading-none">
+          <span
+            className={`truncate font-type text-[11px] uppercase leading-none ${
+              isWinnerA ? "text-ink font-bold" : "font-semibold text-white"
+            }`}
+          >
             {match.teamA ? match.teamA.name : "TBD"}
           </span>
         </div>
@@ -476,7 +480,7 @@ function BracketMatchCard({
           {match.scoreA ? (
             <span
               className={`display text-base leading-none ${
-                isWinnerA ? "text-ink font-bold" : "text-muted-foreground"
+                isWinnerA ? "text-ink font-bold" : "font-bold text-white"
               }`}
             >
               {match.scoreA.total}
@@ -493,7 +497,7 @@ function BracketMatchCard({
         onMouseLeave={() => onHoverTeam(null)}
         className={`flex items-center justify-between px-2 py-1.5 transition-colors ${
           isWinnerB ? "bg-sun/40 font-bold" : ""
-        } ${isEliminatedB ? "opacity-50 bg-ivory/50" : ""} ${
+        } ${isEliminatedB ? "bg-ivory/15" : ""} ${
           hoveredTeamId && match.teamB && hoveredTeamId === match.teamB.id ? "bg-sun/60" : ""
         }`}
       >
@@ -505,7 +509,11 @@ function BracketMatchCard({
           >
             {match.teamB ? String(match.teamB.number).padStart(2, "0") : "–"}
           </span>
-          <span className="truncate font-type text-[10px] uppercase font-medium text-ink leading-none">
+          <span
+            className={`truncate font-type text-[11px] uppercase leading-none ${
+              isWinnerB ? "text-ink font-bold" : "font-semibold text-white"
+            }`}
+          >
             {match.teamB ? match.teamB.name : "TBD"}
           </span>
         </div>
@@ -513,7 +521,7 @@ function BracketMatchCard({
           {match.scoreB ? (
             <span
               className={`display text-base leading-none ${
-                isWinnerB ? "text-ink font-bold" : "text-muted-foreground"
+                isWinnerB ? "text-ink font-bold" : "font-bold text-white"
               }`}
             >
               {match.scoreB.total}

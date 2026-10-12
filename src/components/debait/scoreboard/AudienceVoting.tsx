@@ -231,11 +231,19 @@ export function AudienceVoting({ match, userVote, onCastVote }: AudienceVotingPr
             </p>
 
             <div className="mt-6 space-y-3">
-                <div className="flex justify-between font-type font-bold text-sm !text-paper">
-                <span>
+              <div className="flex justify-between gap-4 font-type text-base font-bold text-white">
+                {/* The scoreboard theme can force dark text on this final-result card; keep the
+                    rendered labels/percentages explicitly white for the closed-voting state. */}
+                <span
+                  className="text-white"
+                  style={{ color: "#FFFFFF", opacity: 1, fontWeight: 800 }}
+                >
                   {teamA?.name}: {votesA}%
                 </span>
-                <span>
+                <span
+                  className="text-white"
+                  style={{ color: "#FFFFFF", opacity: 1, fontWeight: 800 }}
+                >
                   {teamB?.name}: {votesB}%
                 </span>
               </div>
@@ -244,7 +252,10 @@ export function AudienceVoting({ match, userVote, onCastVote }: AudienceVotingPr
                 <div className="w-0.5 bg-ink" />
                 <div className="bg-hot" style={{ width: `${votesB}%` }} />
               </div>
-              <div className="text-right font-type text-xs !text-paper">
+              <div
+                className="text-right font-type text-sm font-semibold text-white"
+                style={{ color: "#FFFFFF", opacity: 1 }}
+              >
                 Total ballots cast: {totalVotes}
               </div>
             </div>

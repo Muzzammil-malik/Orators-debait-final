@@ -90,6 +90,8 @@ const toMatch = (
       teamA: percentageA,
       teamB: totalVotes ? 100 - percentageA : 50,
       totalVotes,
+      teamAVotes: voteA,
+      teamBVotes: voteB,
     },
     votingStatus: row.voting_status as VotingStatus,
     updatedAt: row.updated_at,

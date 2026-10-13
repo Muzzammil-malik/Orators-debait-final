@@ -4,6 +4,7 @@ import { ScoreboardHeader } from "@/components/debait/scoreboard/ScoreboardHeade
 import { LiveMatches } from "@/components/debait/scoreboard/LiveMatches";
 import { LiveScorecard } from "@/components/debait/scoreboard/LiveScorecard";
 import { AudienceVoting } from "@/components/debait/scoreboard/AudienceVoting";
+import { PeopleChoice } from "@/components/debait/scoreboard/PeopleChoice";
 import { RecentResults } from "@/components/debait/scoreboard/RecentResults";
 import { MatchDetailModal } from "@/components/debait/scoreboard/MatchDetailModal";
 import { TournamentBracket } from "@/components/debait/scoreboard/TournamentBracket";
@@ -170,6 +171,12 @@ function ScoreboardPage() {
 
         {/* 5. AUDIENCE / PARTICIPANT VOTING (Interactive Centerpiece) */}
         <AudienceVoting match={activeMatch} userVote={userVote} onCastVote={castVote} />
+
+        <PeopleChoice
+          matches={tree ? allMatches : undefined}
+          isLoading={isLoading}
+          hasError={Boolean(error)}
+        />
 
         {/* 6. RECENT RESULTS / MATCH HISTORY */}
         <RecentResults matches={allMatches} onOpenMatchModal={(id) => setModalMatchId(id)} />

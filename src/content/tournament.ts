@@ -64,6 +64,8 @@ export interface MatchVotes {
   teamA: number;
   teamB: number;
   totalVotes: number;
+  teamAVotes: number;
+  teamBVotes: number;
 }
 
 export interface Match {

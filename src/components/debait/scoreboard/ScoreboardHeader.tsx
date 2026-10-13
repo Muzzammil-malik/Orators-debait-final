@@ -75,6 +75,11 @@ export function ScoreboardHeader({ hasLiveMatch }: ScoreboardHeaderProps) {
               </TransitionLink>
             </Magnetic>
             <Magnetic strength={7}>
+              <TransitionLink href="#people-choice" className="text-ink hover:text-hot">
+                People&rsquo;s Choice
+              </TransitionLink>
+            </Magnetic>
+            <Magnetic strength={7}>
               <TransitionLink href="#results" className="text-ink hover:text-hot">
                 Results
               </TransitionLink>

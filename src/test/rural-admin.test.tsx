@@ -33,7 +33,7 @@ const makeMatch = (): Match => ({
   status: "upcoming",
   teamA: makeTeam(1),
   teamB: makeTeam(2),
-  votes: { teamA: 50, teamB: 50, totalVotes: 0 },
+  votes: { teamA: 50, teamB: 50, totalVotes: 0, teamAVotes: 0, teamBVotes: 0 },
   votingStatus: "upcoming",
 });
 

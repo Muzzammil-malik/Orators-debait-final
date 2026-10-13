@@ -238,6 +238,55 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
     );
   });
 
+  it("submits the canonical quarterfinal round value for a quarter-final match", async () => {
+    const onCreateMatch = vi.fn().mockResolvedValue({ success: true });
+    const preliminaries = [
+      {
+        ...makeMatch(),
+        id: "completed-prelim-1",
+        status: "completed" as const,
+        winnerTeamId: "test-team-1",
+      },
+      {
+        ...makeMatch(),
+        id: "completed-prelim-2",
+        status: "completed" as const,
+        winnerTeamId: "test-team-3",
+      },
+    ];
+    render(
+      <MatchManagement
+        allMatches={preliminaries}
+        teams={[makeTeam(1), makeTeam(2), makeTeam(3), makeTeam(4)]}
+        activeMatchId=""
+        onSelectMatch={vi.fn()}
+        onUpdateStatus={vi.fn().mockResolvedValue({ success: true })}
+        onAssignTeam={vi.fn().mockResolvedValue({ success: true })}
+        onCreateMatch={onCreateMatch}
+        onDeleteMatch={vi.fn().mockResolvedValue({ success: true })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Add Match/i }));
+    fireEvent.change(screen.getByLabelText("Match round"), {
+      target: { value: "quarterfinal" },
+    });
+    fireEvent.change(screen.getByLabelText("Team A"), { target: { value: "test-team-1" } });
+    fireEvent.change(screen.getByLabelText("Team B"), { target: { value: "test-team-3" } });
+    fireEvent.click(screen.getByRole("button", { name: /Save Match/i }));
+
+    await waitFor(() =>
+      expect(onCreateMatch).toHaveBeenCalledWith({
+        round: "quarterfinal",
+        roundLabel: "Quarter-final 01",
+        stageName: "Quarter-finals · Match 01",
+        teamAId: "test-team-1",
+        teamBId: "test-team-3",
+        status: "upcoming",
+      }),
+    );
+  });
+
   it("limits quarter-final assignment to completed preliminary winners", () => {
     const preliminary = {
       ...makeMatch(),

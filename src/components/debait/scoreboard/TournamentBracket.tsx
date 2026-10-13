@@ -71,7 +71,7 @@ export function TournamentBracket({
           aria-label="Bracket stages"
         >
           {[
-            { id: "prelims", label: "Preliminaries", count: preliminaries.length },
+            { id: "prelims", label: "Preliminaries", count: 8 },
             { id: "sf", label: "Semifinals", count: semiFinals.length },
             { id: "final", label: "Championship Final", count: final ? 1 : 0 },
           ].map((tab) => (
@@ -102,7 +102,7 @@ export function TournamentBracket({
                 <span className="text-[10px] opacity-70">DAY 01 · MATCHES 01–04</span>
               </div>
               <div className="border-b-2 border-ink bg-paper/70 py-1.5 px-1 leading-tight">
-                SEMIFINAL GROUP A
+                SEMIFINALS · A
                 <br />
                 <span className="text-[10px] opacity-70">
                   {semiFinalsLeft.length} {semiFinalsLeft.length === 1 ? "MATCH" : "MATCHES"}
@@ -114,7 +114,7 @@ export function TournamentBracket({
                 <span className="text-[10px] opacity-80">CHAMPIONSHIP DEBATE</span>
               </div>
               <div className="border-b-2 border-ink bg-paper/70 py-1.5 px-1 leading-tight">
-                SEMIFINAL GROUP B
+                SEMIFINALS · B
                 <br />
                 <span className="text-[10px] opacity-70">
                   {semiFinalsRight.length} {semiFinalsRight.length === 1 ? "MATCH" : "MATCHES"}
@@ -135,90 +135,66 @@ export function TournamentBracket({
                 style={{ overflow: "visible" }}
                 aria-hidden="true"
               >
-                {/* Preliminary winners 1–4 feed semifinal group A. */}
+                {/* Connectors: Left Prelims to SF 1 */}
                 <path
-                  d="M 23% 13% L 25% 13% L 25% 37% L 27% 37%"
+                  d="M 23% 13% L 25% 13% L 25% 50% L 27% 50%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 23% 38% L 25% 38% L 25% 37% L 27% 37%"
+                  d="M 23% 38% L 25% 38% L 25% 50% L 27% 50%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 23% 63% L 25% 63% L 25% 63% L 27% 63%"
+                  d="M 23% 63% L 25% 63% L 25% 50% L 27% 50%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 23% 88% L 25% 88% L 25% 63% L 27% 63%"
-                  fill="none"
-                  stroke="var(--ink)"
-                  strokeWidth="1.8"
-                  strokeDasharray="4 2"
-                />
-
-                {/* Semifinal winners advance to the manually assigned Grand Final slots. */}
-                <path
-                  d="M 44% 37% L 46% 37% L 46% 50% L 47% 50%"
-                  fill="none"
-                  stroke="var(--ink)"
-                  strokeWidth="1.8"
-                  strokeDasharray="4 2"
-                />
-                <path
-                  d="M 44% 63% L 46% 63% L 46% 50% L 47% 50%"
+                  d="M 23% 88% L 25% 88% L 25% 50% L 27% 50%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
 
-                {/* Preliminary winners 5–8 feed semifinal group B. */}
+                {/* Connector: SF 1 to Grand Final */}
+                <path d="M 44% 50% L 47% 50%" fill="none" stroke="var(--ink)" strokeWidth="2.5" />
+
+                {/* Connector: SF 2 to Grand Final */}
+                <path d="M 56% 50% L 53% 50%" fill="none" stroke="var(--ink)" strokeWidth="2.5" />
+
+                {/* Connectors: Right Prelims to SF 2 */}
                 <path
-                  d="M 77% 13% L 75% 13% L 75% 37% L 73% 37%"
+                  d="M 77% 13% L 75% 13% L 75% 50% L 73% 50%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 77% 38% L 75% 38% L 75% 37% L 73% 37%"
+                  d="M 77% 38% L 75% 38% L 75% 50% L 73% 50%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 77% 63% L 75% 63% L 75% 63% L 73% 63%"
+                  d="M 77% 63% L 75% 63% L 75% 50% L 73% 50%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 77% 88% L 75% 88% L 75% 63% L 73% 63%"
-                  fill="none"
-                  stroke="var(--ink)"
-                  strokeWidth="1.8"
-                  strokeDasharray="4 2"
-                />
-                <path
-                  d="M 56% 37% L 54% 37% L 54% 50% L 53% 50%"
-                  fill="none"
-                  stroke="var(--ink)"
-                  strokeWidth="1.8"
-                  strokeDasharray="4 2"
-                />
-                <path
-                  d="M 56% 63% L 54% 63% L 54% 50% L 53% 50%"
+                  d="M 77% 88% L 75% 88% L 75% 50% L 73% 50%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
@@ -404,8 +380,8 @@ export function TournamentBracket({
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-ink/20 pt-4 text-xs font-type text-muted-foreground">
           <div>
             💡 <strong className="text-ink">Official Structure:</strong> 16 Teams → 8 Preliminaries
-            → Top 8 Evaluated → {semiFinals.length} Semifinal Matches → Admin-assigned Grand
-            Final. Click any match to inspect its live score breakdown.
+            → Top 8 Evaluated → {semiFinals.length} Semifinal Matches → 1 Grand Final. Click any
+            match to inspect its live score breakdown.
           </div>
           <div className="text-stone">
             All match results certified by Orators&rsquo; Club Tabulation Desk.
@@ -444,12 +420,6 @@ function BracketMatchCard({
 
   const isEliminatedA = isCompleted && !isWinnerA && !!match.winnerTeamId;
   const isEliminatedB = isCompleted && !isWinnerB && !!match.winnerTeamId;
-  const waitingLabel =
-    match.round === "semifinal"
-      ? "AWAITING PRELIMINARY WINNER"
-      : match.round === "final"
-        ? "AWAITING ADMIN ASSIGNMENT"
-        : "TBD";
 
   return (
     <div
@@ -527,7 +497,7 @@ function BracketMatchCard({
                 : `${isWinnerA ? "text-ink font-bold" : "font-semibold text-white"} group-hover:text-white`
             }`}
           >
-            {match.teamA ? match.teamA.name : waitingLabel}
+            {match.teamA ? match.teamA.name : "TBD"}
           </span>
         </div>
         <div className="shrink-0 pl-1">
@@ -584,7 +554,7 @@ function BracketMatchCard({
                 : `${isWinnerB ? "text-ink font-bold" : "font-semibold text-white"} group-hover:text-white`
             }`}
           >
-            {match.teamB ? match.teamB.name : waitingLabel}
+            {match.teamB ? match.teamB.name : "TBD"}
           </span>
         </div>
         <div className="shrink-0 pl-1">

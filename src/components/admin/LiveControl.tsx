@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Radio, Play, Pause, CheckCircle2, Zap, AlertTriangle } from "lucide-react";
+import buzzerSound from "@/assets/buzzer.mp4";
 import type { Match, ZoneNumber, MatchStatus } from "@/content/tournament";
 import { ZONES_METADATA } from "@/content/tournament";
 
@@ -26,6 +27,7 @@ export function LiveControl({
 }: LiveControlProps) {
   const [winnerSelection, setWinnerSelection] = useState<string>("");
   const [actionError, setActionError] = useState<string | null>(null);
+  const [buzzerError, setBuzzerError] = useState<string | null>(null);
   const [savingAction, setSavingAction] = useState(false);
 
   const runAction = async (action: () => Promise<{ success: boolean; error?: string }>) => {
@@ -54,6 +56,17 @@ export function LiveControl({
   const isLive = activeMatch.status === "live";
   const isCompleted = activeMatch.status === "completed";
   const currentZoneInfo = ZONES_METADATA[activeMatch.zone];
+  const handleSwitchToggle = () => {
+    setBuzzerError(null);
+    if (!activeMatch.switchRoundTriggered) {
+      const buzzer = new Audio(buzzerSound);
+      buzzer.loop = false;
+      void buzzer.play().catch(() => {
+        setBuzzerError("The switch buzzer could not be played. Check your browser audio settings.");
+      });
+    }
+    void runAction(() => onToggleSwitch(activeMatch.id));
+  };
 
   return (
     <div className="space-y-6">
@@ -63,6 +76,14 @@ export function LiveControl({
           className="border border-hot/60 bg-hot/10 px-4 py-2 font-mono text-xs text-hot"
         >
           {actionError}
+        </p>
+      )}
+      {buzzerError && (
+        <p
+          role="alert"
+          className="border border-hot/60 bg-hot/10 px-4 py-2 font-mono text-xs text-hot"
+        >
+          {buzzerError}
         </p>
       )}
       {/* 1. MATCH SELECTOR STRIP */}
@@ -273,7 +294,7 @@ export function LiveControl({
             <button
               type="button"
               disabled={savingAction}
-              onClick={() => void runAction(() => onToggleSwitch(activeMatch.id))}
+              onClick={handleSwitchToggle}
               className={`flex items-center gap-2 border-2 px-4 py-2 font-type text-xs uppercase font-bold tracking-wider transition-colors ${
                 activeMatch.switchRoundTriggered
                   ? "border-hot bg-hot text-paper shadow-[3px_3px_0_var(--line)] animate-pulse"

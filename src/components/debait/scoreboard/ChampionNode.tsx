@@ -42,7 +42,7 @@ export function ChampionNode({ champion, finalCompleted }: ChampionNodeProps) {
             </div>
           ) : (
             <div className="mt-3">
-              <div className="border border-ink/40 bg-ivory/80 px-3 py-1 font-type text-xs font-bold uppercase tracking-widest text-ink">
+              <div className="border border-ink/40 bg-ivory/80 px-3 py-1 font-type text-xs font-bold uppercase tracking-widest !text-white">
                 AWAITING FINAL
               </div>
               <p className="mt-1 text-[11px] font-type text-muted-foreground">

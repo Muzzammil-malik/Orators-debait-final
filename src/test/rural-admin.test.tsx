@@ -4,6 +4,7 @@ import type { Match, Team } from "@/content/tournament";
 import { AdminAuthService } from "@/lib/admin-api";
 import { AdminLogin } from "@/components/admin/AdminLogin";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
+import { LiveControl } from "@/components/admin/LiveControl";
 import { MatchManagement } from "@/components/admin/MatchManagement";
 import { ScoreEntry } from "@/components/admin/ScoreEntry";
 import { TeamManagement } from "@/components/admin/TeamManagement";
@@ -45,7 +46,61 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  it("plays the switch buzzer once when activating the switch round", async () => {
+    const audio = { loop: true, play: vi.fn().mockResolvedValue(undefined) };
+    const AudioMock = vi.fn(function (this: { loop: boolean; play: typeof audio.play }) {
+      this.loop = true;
+      this.play = audio.play;
+    });
+    const onToggleSwitch = vi.fn().mockResolvedValue({ success: true });
+    vi.stubGlobal("Audio", AudioMock);
+    render(
+      <LiveControl
+        allMatches={[makeMatch()]}
+        activeMatch={makeMatch()}
+        onSelectMatch={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onSetZone={vi.fn()}
+        onToggleSwitch={onToggleSwitch}
+      />,
+    );
+
+    const triggerButton = screen.getByRole("button", { name: /trigger switch buzzer/i });
+    fireEvent.click(triggerButton);
+
+    expect(AudioMock).toHaveBeenCalledOnce();
+    expect(AudioMock.mock.instances[0]?.loop).toBe(false);
+    expect(audio.play).toHaveBeenCalledOnce();
+    await waitFor(() => expect(onToggleSwitch).toHaveBeenCalledOnce());
+    await waitFor(() => expect(triggerButton).not.toBeDisabled());
+  });
+
+  it("does not play the switch buzzer when resetting an active switch round", async () => {
+    const activeMatch = { ...makeMatch(), switchRoundTriggered: true };
+    const AudioMock = vi.fn();
+    const onToggleSwitch = vi.fn().mockResolvedValue({ success: true });
+    vi.stubGlobal("Audio", AudioMock);
+    render(
+      <LiveControl
+        allMatches={[activeMatch]}
+        activeMatch={activeMatch}
+        onSelectMatch={vi.fn()}
+        onUpdateStatus={vi.fn()}
+        onSetZone={vi.fn()}
+        onToggleSwitch={onToggleSwitch}
+      />,
+    );
+
+    const resetButton = screen.getByRole("button", { name: /buzzer triggered \(active\)/i });
+    fireEvent.click(resetButton);
+
+    expect(AudioMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(onToggleSwitch).toHaveBeenCalledOnce());
+    await waitFor(() => expect(resetButton).not.toBeDisabled());
   });
 
   it("requires email and password and does not create a browser-local admin session", async () => {

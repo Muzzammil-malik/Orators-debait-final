@@ -23,7 +23,7 @@ const faqItems: FAQItem[] = [
   },
   {
     q: "What is the official debate format and structure?",
-    a: "16 Teams begin in Day 1 Preliminary Rounds. The Top 8 selected teams advance to Day 2 Semifinals (Final Four knockout), leading to the Grand Championship Final. There are no quarterfinals.",
+    a: "16 teams begin in the preliminary rounds. Eight advance to four quarter-finals, then the four quarter-final winners compete in two semi-finals before the Grand Championship Final.",
   },
   {
     q: "What is the theme of DE'BAIT 2026?",

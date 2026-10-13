@@ -65,6 +65,10 @@ export function MatchManagement({
     () => allMatches.filter((match) => match.round === "semifinal"),
     [allMatches],
   );
+  const quarterFinals = useMemo(
+    () => allMatches.filter((match) => match.round === "quarterfinal"),
+    [allMatches],
+  );
   const finalMatches = useMemo(
     () => allMatches.filter((match) => match.round === "final"),
     [allMatches],
@@ -78,6 +82,31 @@ export function MatchManagement({
       }),
     [allMatches, filterRound, statusFilter],
   );
+  const eligibleTeams = (round: MatchRound, matchId?: string): Team[] => {
+    const previousRound: Partial<Record<MatchRound, MatchRound>> = {
+      quarterfinal: "preliminary",
+      semifinal: "quarterfinal",
+      final: "semifinal",
+    };
+    const sourceRound = previousRound[round];
+    if (!sourceRound) return teams;
+
+    const advancingTeamIds = new Set(
+      allMatches
+        .filter(
+          (match) =>
+            match.round === sourceRound && match.status === "completed" && match.winnerTeamId,
+        )
+        .map((match) => match.winnerTeamId!),
+    );
+    const assignedTeamIds = new Set(
+      allMatches
+        .filter((match) => match.round === round && match.id !== matchId)
+        .flatMap((match) => [match.teamA?.id, match.teamB?.id])
+        .filter((teamId): teamId is string => Boolean(teamId)),
+    );
+    return teams.filter((team) => advancingTeamIds.has(team.id) && !assignedTeamIds.has(team.id));
+  };
 
   const runMutation = async (action: () => Promise<{ success: boolean; error?: string }>) => {
     if (saving) return;
@@ -103,8 +132,8 @@ export function MatchManagement({
       stageName: newMatch.stageName,
       teamAId: newMatch.teamAId,
       teamBId: newMatch.teamBId,
-      court: newMatch.court || undefined,
-      motion: newMatch.motion || undefined,
+      ...(newMatch.court ? { court: newMatch.court } : {}),
+      ...(newMatch.motion ? { motion: newMatch.motion } : {}),
       status: "upcoming",
     });
     setFeedback(
@@ -129,7 +158,7 @@ export function MatchManagement({
   const confirmDeleteMatch = async () => {
     if (!matchToDelete) return;
     const result = await onDeleteMatch(matchToDelete.id);
-    setDeleteError(result.success ? null : result.error ?? "The match could not be removed.");
+    setDeleteError(result.success ? null : (result.error ?? "The match could not be removed."));
     if (result.success) {
       setMatchToDelete(null);
       setFeedback("Match removed from the tournament feed.");
@@ -180,7 +209,8 @@ export function MatchManagement({
                 [
                   ["all", `All (${allMatches.length})`],
                   ["preliminary", `Prelims (${preliminaries.length})`],
-                  ["semifinal", `Semifinals (${semiFinals.length})`],
+                  ["quarterfinal", `Quarter-finals (${quarterFinals.length})`],
+                  ["semifinal", `Semi-finals (${semiFinals.length})`],
                   ["final", `Final (${finalMatches.length})`],
                 ] as const
               ).map(([round, label]) => (
@@ -211,24 +241,31 @@ export function MatchManagement({
                   setNewMatch((current) => ({
                     ...current,
                     round: nextRound,
+                    teamAId: "",
+                    teamBId: "",
                     roundLabel:
                       nextRound === "preliminary"
                         ? `Prelim ${String(allMatches.filter((match) => match.round === "preliminary").length + 1).padStart(2, "0")}`
-                        : nextRound === "semifinal"
-                          ? `Semifinal ${String(allMatches.filter((match) => match.round === "semifinal").length + 1).padStart(2, "0")}`
-                          : "Grand Final",
+                        : nextRound === "quarterfinal"
+                          ? `Quarter-final ${String(allMatches.filter((match) => match.round === "quarterfinal").length + 1).padStart(2, "0")}`
+                          : nextRound === "semifinal"
+                            ? `Semi-final ${String(allMatches.filter((match) => match.round === "semifinal").length + 1).padStart(2, "0")}`
+                            : "Grand Final",
                     stageName:
                       nextRound === "preliminary"
                         ? `Preliminaries · Match ${String(allMatches.filter((match) => match.round === "preliminary").length + 1).padStart(2, "0")}`
-                        : nextRound === "semifinal"
-                          ? `Final Four · Match ${String(allMatches.filter((match) => match.round === "semifinal").length + 1).padStart(2, "0")}`
-                          : "Championship Debate",
+                        : nextRound === "quarterfinal"
+                          ? `Quarter-finals · Match ${String(allMatches.filter((match) => match.round === "quarterfinal").length + 1).padStart(2, "0")}`
+                          : nextRound === "semifinal"
+                            ? `Semi-finals · Match ${String(allMatches.filter((match) => match.round === "semifinal").length + 1).padStart(2, "0")}`
+                            : "Championship Debate",
                   }));
                 }}
                 className="border border-line bg-canvas px-2 py-2 font-mono text-xs text-paper focus:border-sun focus:outline-none"
               >
                 <option value="preliminary">Preliminary</option>
-                <option value="semifinal">Semifinal</option>
+                <option value="quarterfinal">Quarter-final</option>
+                <option value="semifinal">Semi-final</option>
                 <option value="final">Final</option>
               </select>
             </label>
@@ -244,11 +281,13 @@ export function MatchManagement({
                 className="border border-line bg-canvas px-2 py-2 font-mono text-xs text-paper focus:border-sun focus:outline-none"
               >
                 <option value="">Choose team</option>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
+                {eligibleTeams(newMatch.round)
+                  .filter((team) => team.id !== newMatch.teamBId)
+                  .map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
               </select>
             </label>
 
@@ -263,11 +302,13 @@ export function MatchManagement({
                 className="border border-line bg-canvas px-2 py-2 font-mono text-xs text-paper focus:border-sun focus:outline-none"
               >
                 <option value="">Choose team</option>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
+                {eligibleTeams(newMatch.round)
+                  .filter((team) => team.id !== newMatch.teamAId)
+                  .map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
               </select>
             </label>
 
@@ -363,151 +404,158 @@ export function MatchManagement({
           </p>
         ) : (
           filteredMatches.map((match) => {
-          const selected = match.id === activeMatchId;
-          return (
-            <article
-              key={match.id}
-              className={`space-y-3 border-2 p-4 ${selected ? "border-sun bg-surface-raised" : "border-line bg-surface hover:border-mist/40"}`}
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-[220px]">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold uppercase text-sun">
-                      {match.roundLabel}
-                    </span>
-                    {statusBadge(match.status)}
+            const selected = match.id === activeMatchId;
+            return (
+              <article
+                key={match.id}
+                className={`space-y-3 border-2 p-4 ${selected ? "border-sun bg-surface-raised" : "border-line bg-surface hover:border-mist/40"}`}
+              >
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-[220px]">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold uppercase text-sun">
+                        {match.roundLabel}
+                      </span>
+                      {statusBadge(match.status)}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-3 font-type text-xs text-mist/60">
+                      <span className="flex items-center gap-1">
+                        <Clock size={12} /> {match.scheduledTime || "Schedule TBD"}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin size={12} /> {match.court || "Stage TBD"}
+                      </span>
+                    </div>
+                    {match.motion && (
+                      <p className="mt-1.5 line-clamp-1 max-w-md font-serif text-xs italic text-mist/80">
+                        &ldquo;{match.motion}&rdquo;
+                      </p>
+                    )}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-3 font-type text-xs text-mist/60">
-                    <span className="flex items-center gap-1">
-                      <Clock size={12} /> {match.scheduledTime || "Schedule TBD"}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MapPin size={12} /> {match.court || "Stage TBD"}
-                    </span>
-                  </div>
-                  {match.motion && (
-                    <p className="mt-1.5 line-clamp-1 max-w-md font-serif text-xs italic text-mist/80">
-                      &ldquo;{match.motion}&rdquo;
-                    </p>
-                  )}
-                </div>
 
-                <div className="grid flex-1 grid-cols-2 gap-3 lg:px-5">
-                  {(["teamA", "teamB"] as const).map((side) => {
-                    const team = match[side];
-                    const score = side === "teamA" ? match.scoreA?.total : match.scoreB?.total;
-                    const winner = match.winnerTeamId === team?.id;
-                    return (
-                      <div
-                        key={side}
-                        className={`border p-2 ${winner ? "border-sun/60 bg-sun/10" : "border-line/60 bg-canvas"}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span
-                            className={`font-type text-[10px] font-bold uppercase ${side === "teamA" ? "text-sun" : "text-hot"}`}
-                          >
-                            {side === "teamA" ? "Proposition" : "Opposition"}
-                          </span>
-                          <span className="font-mono text-sm font-bold text-paper">
-                            {score ?? "—"}
-                          </span>
-                        </div>
-                        <div className="mt-0.5 truncate font-mono text-xs text-mist">
-                          {team?.name ?? "TBD"}
-                        </div>
-                        {winner && (
-                          <span className="mt-1 inline-block text-[9px] font-bold uppercase text-sun">
-                            Winner
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 border-t border-line/60 pt-3 lg:border-0 lg:pt-0">
-                  <button
-                    type="button"
-                    onClick={() => onSelectMatch(match.id)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 font-type text-xs uppercase ${selected ? "border-2 border-sun bg-sun font-bold text-canvas" : "border border-line bg-surface-raised text-mist hover:border-sun hover:text-paper"}`}
-                  >
-                    {selected ? "Active Target" : "Select Match"}
-                    <ChevronRight size={13} />
-                  </button>
-                  {match.status === "upcoming" && (
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={() => void runMutation(() => onUpdateStatus(match.id, "live"))}
-                      className="border border-sun/60 bg-sun/10 px-2.5 py-1.5 font-type text-xs uppercase text-sun hover:bg-sun hover:text-canvas disabled:opacity-50"
-                    >
-                      Set Live
-                    </button>
-                  )}
-                  {match.status === "live" && (
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={() => void runMutation(() => onUpdateStatus(match.id, "upcoming"))}
-                      className="border border-line bg-surface-raised px-2.5 py-1.5 font-type text-xs uppercase text-mist hover:text-paper disabled:opacity-50"
-                    >
-                      Pause
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    disabled={saving}
-                    onClick={() => {
-                      setMatchToDelete(match);
-                      setDeleteError(null);
-                    }}
-                    className="flex items-center gap-1.5 border border-hot/60 bg-hot/10 px-2.5 py-1.5 font-type text-xs uppercase text-hot hover:bg-hot hover:text-canvas disabled:opacity-50"
-                  >
-                    <Trash2 size={12} />
-                    Remove Match
-                  </button>
-                </div>
-              </div>
-
-              {match.status === "upcoming" && (
-                <div className="grid gap-2 border-t border-line/60 pt-3 md:grid-cols-2">
-                  {(["teamA", "teamB"] as const).map((side) => {
-                    const current = match[side];
-                    const opposite = side === "teamA" ? match.teamB?.id : match.teamA?.id;
-                    return (
-                      <label
-                        key={side}
-                        className="flex min-w-0 items-center gap-2 font-type text-[10px] uppercase text-mist/60"
-                      >
-                        {side === "teamA" ? "Proposition" : "Opposition"}
-                        <select
-                          aria-label={`${match.roundLabel} ${side === "teamA" ? "proposition" : "opposition"} team`}
-                          value={current?.id ?? ""}
-                          disabled={saving}
-                          onChange={(event) =>
-                            void runMutation(() =>
-                              onAssignTeam(match.id, side, event.target.value || null),
-                            )
-                          }
-                          className="min-w-0 flex-1 border border-line bg-canvas px-2 py-1.5 font-mono text-xs normal-case text-paper focus:border-sun focus:outline-none disabled:opacity-60"
+                  <div className="grid flex-1 grid-cols-2 gap-3 lg:px-5">
+                    {(["teamA", "teamB"] as const).map((side) => {
+                      const team = match[side];
+                      const score = side === "teamA" ? match.scoreA?.total : match.scoreB?.total;
+                      const winner = match.winnerTeamId === team?.id;
+                      return (
+                        <div
+                          key={side}
+                          className={`border p-2 ${winner ? "border-sun/60 bg-sun/10" : "border-line/60 bg-canvas"}`}
                         >
-                          <option value="">Unassigned</option>
-                          {teams
-                            .filter((team) => team.id === current?.id || team.id !== opposite)
-                            .map((team) => (
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`font-type text-[10px] font-bold uppercase ${side === "teamA" ? "text-sun" : "text-hot"}`}
+                            >
+                              {side === "teamA" ? "Proposition" : "Opposition"}
+                            </span>
+                            <span className="font-mono text-sm font-bold text-paper">
+                              {score ?? "—"}
+                            </span>
+                          </div>
+                          <div className="mt-0.5 truncate font-mono text-xs text-mist">
+                            {team?.name ?? "TBD"}
+                          </div>
+                          {winner && (
+                            <span className="mt-1 inline-block text-[9px] font-bold uppercase text-sun">
+                              Winner
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 border-t border-line/60 pt-3 lg:border-0 lg:pt-0">
+                    <button
+                      type="button"
+                      onClick={() => onSelectMatch(match.id)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 font-type text-xs uppercase ${selected ? "border-2 border-sun bg-sun font-bold text-canvas" : "border border-line bg-surface-raised text-mist hover:border-sun hover:text-paper"}`}
+                    >
+                      {selected ? "Active Target" : "Select Match"}
+                      <ChevronRight size={13} />
+                    </button>
+                    {match.status === "upcoming" && (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void runMutation(() => onUpdateStatus(match.id, "live"))}
+                        className="border border-sun/60 bg-sun/10 px-2.5 py-1.5 font-type text-xs uppercase text-sun hover:bg-sun hover:text-canvas disabled:opacity-50"
+                      >
+                        Set Live
+                      </button>
+                    )}
+                    {match.status === "live" && (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => void runMutation(() => onUpdateStatus(match.id, "upcoming"))}
+                        className="border border-line bg-surface-raised px-2.5 py-1.5 font-type text-xs uppercase text-mist hover:text-paper disabled:opacity-50"
+                      >
+                        Pause
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={saving}
+                      onClick={() => {
+                        setMatchToDelete(match);
+                        setDeleteError(null);
+                      }}
+                      className="flex items-center gap-1.5 border border-hot/60 bg-hot/10 px-2.5 py-1.5 font-type text-xs uppercase text-hot hover:bg-hot hover:text-canvas disabled:opacity-50"
+                    >
+                      <Trash2 size={12} />
+                      Remove Match
+                    </button>
+                  </div>
+                </div>
+
+                {match.status === "upcoming" && (
+                  <div className="grid gap-2 border-t border-line/60 pt-3 md:grid-cols-2">
+                    {(["teamA", "teamB"] as const).map((side) => {
+                      const current = match[side];
+                      const opposite = side === "teamA" ? match.teamB?.id : match.teamA?.id;
+                      return (
+                        <label
+                          key={side}
+                          className="flex min-w-0 items-center gap-2 font-type text-[10px] uppercase text-mist/60"
+                        >
+                          {side === "teamA" ? "Proposition" : "Opposition"}
+                          <select
+                            aria-label={`${match.roundLabel} ${side === "teamA" ? "proposition" : "opposition"} team`}
+                            value={current?.id ?? ""}
+                            disabled={saving}
+                            onChange={(event) =>
+                              void runMutation(() =>
+                                onAssignTeam(match.id, side, event.target.value || null),
+                              )
+                            }
+                            className="min-w-0 flex-1 border border-line bg-canvas px-2 py-1.5 font-mono text-xs normal-case text-paper focus:border-sun focus:outline-none disabled:opacity-60"
+                          >
+                            <option value="">Unassigned</option>
+                            {[
+                              ...new Map(
+                                [
+                                  ...(current ? [current] : []),
+                                  ...eligibleTeams(match.round, match.id).filter(
+                                    (team) => team.id !== opposite,
+                                  ),
+                                ].map((team) => [team.id, team]),
+                              ).values(),
+                            ].map((team) => (
                               <option key={team.id} value={team.id}>
                                 {team.name}
                               </option>
                             ))}
-                        </select>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-            </article>
-          );
-        })
+                          </select>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </article>
+            );
+          })
         )}
       </div>
 

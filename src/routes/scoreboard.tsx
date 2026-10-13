@@ -98,8 +98,9 @@ function ScoreboardPage() {
               </h1>
               <p className="mt-3 font-serif text-lg md:text-xl text-ink/80 max-w-2xl">
                 Real-time tournament progression, judge scoring, and audience sentiment for
-                DE&rsquo;BAIT. 16 teams, 8 preliminary rounds, Top 8 evaluation,{" "}
-                {tree?.semiFinals.length ?? 0} semifinal matches, and 1 grand championship final.
+                DE&rsquo;BAIT. 16 teams, 8 preliminary rounds, {tree?.quarterFinals.length ?? 0}{" "}
+                quarter-finals, {tree?.semiFinals.length ?? 0} semi-finals, and 1 grand championship
+                final.
               </p>
             </div>
 
@@ -112,7 +113,7 @@ function ScoreboardPage() {
                 {liveMatches.length > 0 ? "ROUND IN PROGRESS" : "AWAITING NEXT ROUND"}
               </div>
               <div className="mt-2 text-xs font-type text-ink/80">
-                8 Prelims → Top 8 Knockout · 100-Point System
+                8 Prelims → Quarter-finals → Semi-finals → Final · 100-Point System
               </div>
             </div>
           </div>

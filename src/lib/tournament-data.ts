@@ -108,6 +108,7 @@ const buildTree = (
   const voteTotals = new Map(voteRows.map((row) => [row.match_id, row]));
   const matches = matchRows.map((row) => toMatch(row, teams, scores, voteTotals));
   const preliminaries = matches.filter((match) => match.round === "preliminary");
+  const quarterFinals = matches.filter((match) => match.round === "quarterfinal");
   const semiFinals = matches.filter((match) => match.round === "semifinal");
   const finals = matches.filter((match) => match.round === "final");
   const final = finals[0];
@@ -115,6 +116,7 @@ const buildTree = (
   const champion = final?.winnerTeamId ? teams.get(final.winnerTeamId) : undefined;
   return {
     preliminaries,
+    quarterFinals,
     semiFinals,
     ...(final ? { final } : {}),
     ...(champion ? { champion } : {}),
@@ -399,5 +401,10 @@ export async function castAudienceVote(matchId: string, teamId: string): Promise
 }
 
 export function getAllMatches(tree: TournamentTree): Match[] {
-  return [...tree.preliminaries, ...tree.semiFinals, ...(tree.final ? [tree.final] : [])];
+  return [
+    ...tree.preliminaries,
+    ...tree.quarterFinals,
+    ...tree.semiFinals,
+    ...(tree.final ? [tree.final] : []),
+  ];
 }

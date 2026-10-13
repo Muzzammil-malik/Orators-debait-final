@@ -36,12 +36,8 @@ export const stats = [
 
 export const stages = [
   { name: "Preliminary Rounds", teams: 16, note: "All 16 teams debate. Top 8 advance." },
-  {
-    name: "Top 8 Selection",
-    teams: 8,
-    note: "Judges evaluate and rank top 8 speakers/teams. Final 4 advance.",
-  },
-  { name: "Semifinals", teams: 4, note: "2 decisive knockout matches." },
+  { name: "Quarter-finals", teams: 8, note: "Four knockout matches. Winners advance." },
+  { name: "Semi-finals", teams: 4, note: "Two decisive knockout matches." },
   { name: "Final", teams: 2, note: "Two teams. One stage. One champion crowned." },
 ];
 
@@ -66,7 +62,7 @@ export const zones = [
 export const switchFacts = [
   {
     k: "Where it strikes",
-    v: "Any single round: Prelims or Semifinals, chosen at random by the organizers.",
+    v: "Any single round: Prelims, Quarter-finals or Semi-finals, chosen at random by the organizers.",
   },
   { k: "Prep time", v: "A 5-minute emergency preparation window once the switch is announced." },
   {
@@ -109,8 +105,8 @@ export const schedule: ScheduleDay[] = [
     label: "Day 02",
     date: event.dates[1]!,
     items: [
-      { time: "12:00–12:30", title: "Reporting & Semifinals briefing" },
-      { time: "12:30–1:45", title: "Semifinals (Final Four · 2 matches)" },
+      { time: "12:00–12:30", title: "Reporting & Quarter-finals briefing" },
+      { time: "12:30–1:45", title: "Quarter-finals & Semi-finals" },
       { time: "1:45–2:15", title: "Lunch break & deliberation" },
       { time: "2:15–3:30", title: "Grand Championship Final" },
       { time: "3:30–4:00", title: "Prize distribution & closing ceremony" },

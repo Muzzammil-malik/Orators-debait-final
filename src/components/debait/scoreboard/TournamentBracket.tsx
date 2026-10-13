@@ -15,15 +15,23 @@ export function TournamentBracket({
   onSelectMatch,
   onOpenMatchModal,
 }: TournamentBracketProps) {
-  // Mobile stage tab: "prelims" | "sf" | "final"
-  const [mobileStage, setMobileStage] = useState<"prelims" | "sf" | "final">("sf");
+  const [mobileStage, setMobileStage] = useState<
+    "prelims" | "quarterfinals" | "semifinals" | "final"
+  >("prelims");
   const [hoveredTeamId, setHoveredTeamId] = useState<string | null>(null);
 
-  const { preliminaries = [], semiFinals = [], final, champion } = tree;
+  const { preliminaries = [], quarterFinals = [], semiFinals = [], final, champion } = tree;
 
   // 8 Preliminary rounds: 4 on left side, 4 on right side
   const prelimsLeft = preliminaries.slice(0, 4); // PR 01, PR 02, PR 03, PR 04
   const prelimsRight = preliminaries.slice(4, 8); // PR 05, PR 06, PR 07, PR 08
+
+  const orderedQuarterFinals = [...quarterFinals].sort(
+    (matchA, matchB) => matchA.matchNumber - matchB.matchNumber,
+  );
+  const quarterFinalSplitIndex = Math.ceil(orderedQuarterFinals.length / 2);
+  const quarterFinalsLeft = orderedQuarterFinals.slice(0, quarterFinalSplitIndex);
+  const quarterFinalsRight = orderedQuarterFinals.slice(quarterFinalSplitIndex);
 
   const semifinalSplitIndex = Math.ceil(semiFinals.length / 2);
   const semiFinalsLeft = semiFinals.slice(0, semifinalSplitIndex);
@@ -41,7 +49,7 @@ export function TournamentBracket({
           <div>
             <div className="mb-1 flex items-center gap-3 font-type text-xs uppercase tracking-widest text-ink">
               <span className="bg-ink px-2 py-0.5 text-sun">STAGE 01</span>
-              <span>16 Teams · 8 Prelims → Top 8 Evaluated → Semifinals → Grand Final</span>
+              <span>16 Teams · 8 Prelims → Quarter-finals → Semi-finals → Grand Final</span>
             </div>
             <h2 className="display text-4xl text-ink md:text-6xl">
               Tournament <span className="text-hot">Tree.</span>
@@ -71,15 +79,18 @@ export function TournamentBracket({
           aria-label="Bracket stages"
         >
           {[
-            { id: "prelims", label: "Preliminaries", count: 8 },
-            { id: "sf", label: "Semifinals", count: semiFinals.length },
-            { id: "final", label: "Championship Final", count: final ? 1 : 0 },
+            { id: "prelims", label: "Prelims", count: preliminaries.length },
+            { id: "quarterfinals", label: "Quarter-finals", count: quarterFinals.length },
+            { id: "semifinals", label: "Semi-finals", count: semiFinals.length },
+            { id: "final", label: "Final", count: final ? 1 : 0 },
           ].map((tab) => (
             <button
               key={tab.id}
               role="tab"
               aria-selected={mobileStage === tab.id}
-              onClick={() => setMobileStage(tab.id as "prelims" | "sf" | "final")}
+              onClick={() =>
+                setMobileStage(tab.id as "prelims" | "quarterfinals" | "semifinals" | "final")
+              }
               className={`flex-1 min-w-[120px] border-2 border-ink px-3 py-2 text-center font-type text-xs uppercase tracking-wider transition-colors ${
                 mobileStage === tab.id
                   ? "bg-ink text-sun shadow-[2px_2px_0_var(--hot)] font-bold"
@@ -91,18 +102,25 @@ export function TournamentBracket({
           ))}
         </div>
 
-        {/* DESKTOP TOURNAMENT TREE (Prelims Left -> Semifinals -> Grand Final -> Semifinals -> Prelims Right) */}
-        <div className="hidden lg:block w-full overflow-hidden pb-6">
-          <div className="w-full">
+        {/* DESKTOP TOURNAMENT TREE */}
+        <div className="hidden lg:block w-full overflow-x-auto pb-6">
+          <div className="min-w-[1280px]">
             {/* Column Titles */}
-            <div className="grid grid-cols-[1.2fr_1.1fr_1.3fr_1.1fr_1.2fr] gap-3 mb-3 text-center font-type text-xs font-bold uppercase tracking-wider text-ink">
+            <div className="grid grid-cols-[1.2fr_0.9fr_0.9fr_1.2fr_0.9fr_0.9fr_1.2fr] gap-3 mb-3 text-center font-type text-xs font-bold uppercase tracking-wider text-ink">
               <div className="border-b-2 border-ink bg-paper/70 py-1.5 px-1 leading-tight">
                 PRELIMINARIES
                 <br />
                 <span className="text-[10px] opacity-70">DAY 01 · MATCHES 01–04</span>
               </div>
               <div className="border-b-2 border-ink bg-paper/70 py-1.5 px-1 leading-tight">
-                SEMIFINALS · A
+                QUARTER-FINALS · A
+                <br />
+                <span className="text-[10px] opacity-70">
+                  {quarterFinalsLeft.length} {quarterFinalsLeft.length === 1 ? "MATCH" : "MATCHES"}
+                </span>
+              </div>
+              <div className="border-b-2 border-ink bg-paper/70 py-1.5 px-1 leading-tight">
+                SEMI-FINALS · A
                 <br />
                 <span className="text-[10px] opacity-70">
                   {semiFinalsLeft.length} {semiFinalsLeft.length === 1 ? "MATCH" : "MATCHES"}
@@ -114,10 +132,18 @@ export function TournamentBracket({
                 <span className="text-[10px] opacity-80">CHAMPIONSHIP DEBATE</span>
               </div>
               <div className="border-b-2 border-ink bg-paper/70 py-1.5 px-1 leading-tight">
-                SEMIFINALS · B
+                SEMI-FINALS · B
                 <br />
                 <span className="text-[10px] opacity-70">
                   {semiFinalsRight.length} {semiFinalsRight.length === 1 ? "MATCH" : "MATCHES"}
+                </span>
+              </div>
+              <div className="border-b-2 border-ink bg-paper/70 py-1.5 px-1 leading-tight">
+                QUARTER-FINALS · B
+                <br />
+                <span className="text-[10px] opacity-70">
+                  {quarterFinalsRight.length}{" "}
+                  {quarterFinalsRight.length === 1 ? "MATCH" : "MATCHES"}
                 </span>
               </div>
               <div className="border-b-2 border-ink bg-paper/70 py-1.5 px-1 leading-tight">
@@ -127,74 +153,104 @@ export function TournamentBracket({
               </div>
             </div>
 
-            {/* Visual Tree Grid with 5 Connected Columns */}
-            <div className="grid grid-cols-[1.2fr_1.1fr_1.3fr_1.1fr_1.2fr] items-center gap-3 relative py-2">
+            {/* Visual Tree Grid with all four tournament stages */}
+            <div className="grid grid-cols-[1.2fr_0.9fr_0.9fr_1.2fr_0.9fr_0.9fr_1.2fr] items-center gap-3 relative py-2">
               {/* SVG Connecting Lines Layer */}
               <svg
                 className="absolute inset-0 pointer-events-none w-full h-full z-0"
                 style={{ overflow: "visible" }}
                 aria-hidden="true"
               >
-                {/* Connectors: Left Prelims to SF 1 */}
+                {/* Left preliminaries feed two quarter-finals */}
                 <path
-                  d="M 23% 13% L 25% 13% L 25% 50% L 27% 50%"
+                  d="M 16% 13% L 18% 13% L 18% 36% L 20% 36%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 23% 38% L 25% 38% L 25% 50% L 27% 50%"
+                  d="M 16% 38% L 18% 38% L 18% 36% L 20% 36%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 23% 63% L 25% 63% L 25% 50% L 27% 50%"
+                  d="M 16% 63% L 18% 63% L 18% 64% L 20% 64%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 23% 88% L 25% 88% L 25% 50% L 27% 50%"
+                  d="M 16% 88% L 18% 88% L 18% 64% L 20% 64%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
 
-                {/* Connector: SF 1 to Grand Final */}
-                <path d="M 44% 50% L 47% 50%" fill="none" stroke="var(--ink)" strokeWidth="2.5" />
+                {/* Quarter-final winners advance to Semi-final 1 */}
+                <path
+                  d="M 30% 36% L 32% 36% L 32% 50% L 34% 50%"
+                  fill="none"
+                  stroke="var(--ink)"
+                  strokeWidth="1.8"
+                  strokeDasharray="4 2"
+                />
+                <path
+                  d="M 30% 64% L 32% 64% L 32% 50% L 34% 50%"
+                  fill="none"
+                  stroke="var(--ink)"
+                  strokeWidth="1.8"
+                  strokeDasharray="4 2"
+                />
 
-                {/* Connector: SF 2 to Grand Final */}
-                <path d="M 56% 50% L 53% 50%" fill="none" stroke="var(--ink)" strokeWidth="2.5" />
+                {/* Semi-final winners advance to the Final */}
+                <path d="M 42% 50% L 47% 50%" fill="none" stroke="var(--ink)" strokeWidth="2.5" />
+                <path d="M 58% 50% L 53% 50%" fill="none" stroke="var(--ink)" strokeWidth="2.5" />
 
-                {/* Connectors: Right Prelims to SF 2 */}
+                {/* Quarter-final winners advance to Semi-final 2 */}
                 <path
-                  d="M 77% 13% L 75% 13% L 75% 50% L 73% 50%"
+                  d="M 70% 36% L 68% 36% L 68% 50% L 66% 50%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 77% 38% L 75% 38% L 75% 50% L 73% 50%"
+                  d="M 70% 64% L 68% 64% L 68% 50% L 66% 50%"
+                  fill="none"
+                  stroke="var(--ink)"
+                  strokeWidth="1.8"
+                  strokeDasharray="4 2"
+                />
+
+                {/* Right preliminaries feed two quarter-finals */}
+                <path
+                  d="M 84% 13% L 82% 13% L 82% 36% L 80% 36%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 77% 63% L 75% 63% L 75% 50% L 73% 50%"
+                  d="M 84% 38% L 82% 38% L 82% 36% L 80% 36%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
                   strokeDasharray="4 2"
                 />
                 <path
-                  d="M 77% 88% L 75% 88% L 75% 50% L 73% 50%"
+                  d="M 84% 63% L 82% 63% L 82% 64% L 80% 64%"
+                  fill="none"
+                  stroke="var(--ink)"
+                  strokeWidth="1.8"
+                  strokeDasharray="4 2"
+                />
+                <path
+                  d="M 84% 88% L 82% 88% L 82% 64% L 80% 64%"
                   fill="none"
                   stroke="var(--ink)"
                   strokeWidth="1.8"
@@ -218,7 +274,22 @@ export function TournamentBracket({
                 ))}
               </div>
 
-              {/* Column 2: Semifinals */}
+              {/* Column 2: Quarter-finals A */}
+              <div className="relative z-10 flex flex-col justify-center gap-2.5 py-3">
+                {quarterFinalsLeft.map((match) => (
+                  <BracketMatchCard
+                    key={match.id}
+                    match={match}
+                    isSelected={selectedMatchId === match.id}
+                    hoveredTeamId={hoveredTeamId}
+                    onHoverTeam={setHoveredTeamId}
+                    onSelect={() => onSelectMatch(match.id)}
+                    onOpenModal={() => onOpenMatchModal(match.id)}
+                  />
+                ))}
+              </div>
+
+              {/* Column 3: Semi-final A */}
               <div className="relative z-10 flex flex-col justify-center gap-2.5 py-3">
                 {semiFinalsLeft.map((match) => (
                   <BracketMatchCard
@@ -233,11 +304,14 @@ export function TournamentBracket({
                 ))}
               </div>
 
-              {/* Column 3: Center Grand Final & Champion Trophy */}
+              {/* Column 4: Center Grand Final & Champion Trophy */}
               <div className="relative z-10 flex flex-col items-center justify-center gap-3 py-3">
                 {final && (
                   <>
-                    <ChampionNode champion={champion} finalCompleted={final.status === "completed"} />
+                    <ChampionNode
+                      {...(champion ? { champion } : {})}
+                      finalCompleted={final.status === "completed"}
+                    />
                     <div className="w-full max-w-sm">
                       <BracketMatchCard
                         match={final}
@@ -253,7 +327,7 @@ export function TournamentBracket({
                 )}
               </div>
 
-              {/* Column 4: Semifinals */}
+              {/* Column 5: Semi-final B */}
               <div className="relative z-10 flex flex-col justify-center gap-2.5 py-3">
                 {semiFinalsRight.map((match) => (
                   <BracketMatchCard
@@ -268,7 +342,22 @@ export function TournamentBracket({
                 ))}
               </div>
 
-              {/* Column 5: Preliminaries Right (PR 5 to 8) */}
+              {/* Column 6: Quarter-finals B */}
+              <div className="relative z-10 flex flex-col justify-center gap-2.5 py-3">
+                {quarterFinalsRight.map((match) => (
+                  <BracketMatchCard
+                    key={match.id}
+                    match={match}
+                    isSelected={selectedMatchId === match.id}
+                    hoveredTeamId={hoveredTeamId}
+                    onHoverTeam={setHoveredTeamId}
+                    onSelect={() => onSelectMatch(match.id)}
+                    onOpenModal={() => onOpenMatchModal(match.id)}
+                  />
+                ))}
+              </div>
+
+              {/* Column 7: Preliminaries Right (PR 5 to 8) */}
               <div className="relative z-10 flex flex-col gap-2.5 justify-between py-1">
                 {prelimsRight.map((match) => (
                   <BracketMatchCard
@@ -287,14 +376,14 @@ export function TournamentBracket({
           </div>
         </div>
 
-        {/* MOBILE RESPONSIVE BRACKET VIEW (Tabs for Prelims, SF, Final) */}
+        {/* MOBILE RESPONSIVE BRACKET VIEW */}
         <div className="lg:hidden space-y-6">
           {mobileStage === "prelims" && (
             <div className="space-y-6">
               <div>
                 <div className="font-type text-xs uppercase tracking-widest text-ink font-bold pb-2 border-b-2 border-ink flex items-center justify-between">
                   <span>Day 01 Prelims (Matches 01–04)</span>
-                  <span className="text-hot">Top 8 Advance</span>
+                  <span className="text-hot">Winners Advance</span>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 mt-3">
                   {prelimsLeft.map((match) => (
@@ -314,7 +403,7 @@ export function TournamentBracket({
               <div>
                 <div className="font-type text-xs uppercase tracking-widest text-ink font-bold pb-2 border-b-2 border-ink flex items-center justify-between">
                   <span>Day 01 Prelims (Matches 05–08)</span>
-                  <span className="text-hot">Top 8 Advance</span>
+                  <span className="text-hot">Winners Advance</span>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 mt-3">
                   {prelimsRight.map((match) => (
@@ -333,10 +422,31 @@ export function TournamentBracket({
             </div>
           )}
 
-          {mobileStage === "sf" && (
+          {mobileStage === "quarterfinals" && (
             <div className="space-y-4">
               <div className="font-type text-xs uppercase tracking-widest text-muted-foreground pb-2 border-b border-ink/20">
-                Semifinals (Winners Advance to Championship Final)
+                Quarter-finals (Winners Advance to Semi-finals)
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {quarterFinals.map((match) => (
+                  <BracketMatchCard
+                    key={match.id}
+                    match={match}
+                    isSelected={selectedMatchId === match.id}
+                    hoveredTeamId={hoveredTeamId}
+                    onHoverTeam={setHoveredTeamId}
+                    onSelect={() => onSelectMatch(match.id)}
+                    onOpenModal={() => onOpenMatchModal(match.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {mobileStage === "semifinals" && (
+            <div className="space-y-4">
+              <div className="font-type text-xs uppercase tracking-widest text-muted-foreground pb-2 border-b border-ink/20">
+                Semi-finals (Winners Advance to Championship Final)
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 {semiFinals.map((match) => (
@@ -358,7 +468,10 @@ export function TournamentBracket({
             <div className="space-y-6">
               {final && (
                 <>
-                  <ChampionNode champion={champion} finalCompleted={final.status === "completed"} />
+                  <ChampionNode
+                    {...(champion ? { champion } : {})}
+                    finalCompleted={final.status === "completed"}
+                  />
                   <div className="max-w-md mx-auto">
                     <BracketMatchCard
                       match={final}
@@ -379,9 +492,10 @@ export function TournamentBracket({
         {/* Bottom Interactive Help */}
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-ink/20 pt-4 text-xs font-type text-muted-foreground">
           <div>
-            💡 <strong className="text-ink">Official Structure:</strong> 16 Teams → 8 Preliminaries
-            → Top 8 Evaluated → {semiFinals.length} Semifinal Matches → 1 Grand Final. Click any
-            match to inspect its live score breakdown.
+            💡 <strong className="text-ink">Official Structure:</strong> 16 Teams →{" "}
+            {preliminaries.length} Prelims → {quarterFinals.length} Quarter-finals →{" "}
+            {semiFinals.length} Semi-finals → {final ? 1 : 0} Final. Click any match to inspect its
+            live score breakdown.
           </div>
           <div className="text-stone">
             All match results certified by Orators&rsquo; Club Tabulation Desk.
@@ -484,8 +598,8 @@ function BracketMatchCard({
               isWinnerA
                 ? "bg-ink text-sun"
                 : isSelected
-                ? "bg-ink text-white border-white"
-                : "bg-paper text-ink group-hover:bg-ink group-hover:text-white group-hover:border-white"
+                  ? "bg-ink text-white border-white"
+                  : "bg-paper text-ink group-hover:bg-ink group-hover:text-white group-hover:border-white"
             }`}
           >
             {match.teamA ? String(match.teamA.number).padStart(2, "0") : "–"}
@@ -541,8 +655,8 @@ function BracketMatchCard({
               isWinnerB
                 ? "bg-ink text-sun"
                 : isSelected
-                ? "bg-ink text-white border-white"
-                : "bg-paper text-ink group-hover:bg-ink group-hover:text-white group-hover:border-white"
+                  ? "bg-ink text-white border-white"
+                  : "bg-paper text-ink group-hover:bg-ink group-hover:text-white group-hover:border-white"
             }`}
           >
             {match.teamB ? String(match.teamB.number).padStart(2, "0") : "–"}

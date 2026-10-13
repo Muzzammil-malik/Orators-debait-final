@@ -98,7 +98,8 @@ export function ScoreboardHeader({ hasLiveMatch }: ScoreboardHeaderProps) {
           <div className="flex items-center gap-2">
             <span className="bg-ink px-1.5 py-0.5 text-sun font-bold">EVENT DESK</span>
             <span className="text-ink font-semibold uppercase tracking-wider">
-              16 Teams · 8 Prelims (4 Left · 4 Right) → Top 8 Knockout · 100-Point System
+              16 Teams · 8 Prelims (4 Left · 4 Right) → 4 Quarter-finals → 2 Semi-finals → Final ·
+              100-Point System
             </span>
           </div>
           <div className="text-stone text-[11px]">

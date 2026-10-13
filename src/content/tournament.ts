@@ -56,7 +56,7 @@ export const ZONES_METADATA: Record<ZoneNumber, ZoneInfo> = {
   },
 };
 
-export type MatchRound = "preliminary" | "semifinal" | "final";
+export type MatchRound = "preliminary" | "quarterfinal" | "semifinal" | "final";
 export type MatchStatus = "upcoming" | "live" | "completed";
 export type VotingStatus = "open" | "closed" | "upcoming";
 
@@ -98,6 +98,7 @@ export interface UserVote {
 
 export interface TournamentTree {
   preliminaries: Match[];
+  quarterFinals: Match[];
   semiFinals: Match[];
   final?: Match;
   champion?: Team;

@@ -37,7 +37,7 @@ Only an Auth user with this profile passes the database admin check. `user_metad
 
 ## Database migrations
 
-Versioned SQL migrations are under `supabase/migrations/`. They create the empty 8-preliminary / 2-semifinal / 1-final tournament skeleton and security policies without importing the old demo teams, results, scores, motions, or votes. No existing application data was overwritten.
+Versioned SQL migrations are under `supabase/migrations/`. Together they create the 8-preliminary / 4-quarter-final / 2-semi-final / 1-final structure and security policies without importing the old demo teams, results, scores, motions, or votes. The four-stage migration reclassifies existing semi-final match records as quarter-finals without changing their teams, scores, or results, fills any missing quarter-final slots, and adds two new semi-final matches.
 
 Apply future schema changes as new migrations; do not edit an already-applied migration. Teams are archived, not deleted, so referenced match history is preserved. The database rejects archival while a team is assigned to an upcoming/live match and prevents edits that would invalidate completed results or existing score rows.
 

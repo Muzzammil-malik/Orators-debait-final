@@ -20,7 +20,12 @@ export function useTournament() {
   const allMatches = useMemo(() => {
     const tree = tournamentQuery.data?.tree;
     return tree
-      ? [...tree.preliminaries, ...tree.semiFinals, ...(tree.final ? [tree.final] : [])]
+      ? [
+          ...tree.preliminaries,
+          ...tree.quarterFinals,
+          ...tree.semiFinals,
+          ...(tree.final ? [tree.final] : []),
+        ]
       : [];
   }, [tournamentQuery.data]);
   const liveMatches = useMemo(

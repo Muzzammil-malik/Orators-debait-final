@@ -111,8 +111,8 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
     vi.spyOn(useAdminTournamentModule, "useAdminTournament").mockReturnValue({
       tree: {
         preliminaries: [completedMatch],
+        quarterFinals: [],
         semiFinals: [],
-        final: undefined,
       },
       allMatches: [completedMatch],
       allTeams: [makeTeam(1), makeTeam(2)],
@@ -238,6 +238,69 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
     );
   });
 
+  it("limits quarter-final assignment to completed preliminary winners", () => {
+    const preliminary = {
+      ...makeMatch(),
+      status: "completed" as const,
+      winnerTeamId: "test-team-1",
+    };
+    render(
+      <MatchManagement
+        allMatches={[preliminary]}
+        teams={[makeTeam(1), makeTeam(2), makeTeam(3)]}
+        activeMatchId=""
+        onSelectMatch={vi.fn()}
+        onUpdateStatus={vi.fn().mockResolvedValue({ success: true })}
+        onAssignTeam={vi.fn().mockResolvedValue({ success: true })}
+        onCreateMatch={vi.fn().mockResolvedValue({ success: true })}
+        onDeleteMatch={vi.fn().mockResolvedValue({ success: true })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Add Match/i }));
+    fireEvent.change(screen.getByLabelText("Match round"), {
+      target: { value: "quarterfinal" },
+    });
+    const teamASelect = screen.getByRole("combobox", { name: "Team A" });
+    expect(within(teamASelect).getByRole("option", { name: "Team 1" })).toBeInTheDocument();
+    expect(within(teamASelect).queryByRole("option", { name: "Team 2" })).toBeNull();
+    expect(within(teamASelect).queryByRole("option", { name: "Team 3" })).toBeNull();
+  });
+
+  it.each([
+    { targetRound: "semifinal" as const, sourceRound: "quarterfinal" as const },
+    { targetRound: "final" as const, sourceRound: "semifinal" as const },
+  ])(
+    "limits $targetRound assignment to completed $sourceRound winners",
+    ({ targetRound, sourceRound }) => {
+      const previousMatch = {
+        ...makeMatch(),
+        round: sourceRound,
+        status: "completed" as const,
+        winnerTeamId: "test-team-1",
+      };
+      render(
+        <MatchManagement
+          allMatches={[previousMatch]}
+          teams={[makeTeam(1), makeTeam(2), makeTeam(3)]}
+          activeMatchId=""
+          onSelectMatch={vi.fn()}
+          onUpdateStatus={vi.fn().mockResolvedValue({ success: true })}
+          onAssignTeam={vi.fn().mockResolvedValue({ success: true })}
+          onCreateMatch={vi.fn().mockResolvedValue({ success: true })}
+          onDeleteMatch={vi.fn().mockResolvedValue({ success: true })}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /Add Match/i }));
+      fireEvent.change(screen.getByLabelText("Match round"), { target: { value: targetRound } });
+      const teamASelect = screen.getByRole("combobox", { name: "Team A" });
+      expect(within(teamASelect).getByRole("option", { name: "Team 1" })).toBeInTheDocument();
+      expect(within(teamASelect).queryByRole("option", { name: "Team 2" })).toBeNull();
+      expect(within(teamASelect).queryByRole("option", { name: "Team 3" })).toBeNull();
+    },
+  );
+
   it("shows a confirmed remove action for completed matches too", async () => {
     const match = { ...makeMatch(), status: "completed" as const };
     const onDeleteMatch = vi.fn().mockResolvedValue({ success: true });
@@ -265,7 +328,7 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
   it("renders the public bracket when the final match has been deleted", () => {
     render(
       <TournamentBracket
-        tree={{ preliminaries: [], semiFinals: [] }}
+        tree={{ preliminaries: [], quarterFinals: [], semiFinals: [] }}
         onSelectMatch={vi.fn()}
         onOpenMatchModal={vi.fn()}
       />,
@@ -275,24 +338,37 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
     expect(screen.queryByText("CHAMPION")).not.toBeInTheDocument();
   });
 
-  it("renders every configured semifinal with its teams and scores in the desktop bracket", () => {
+  it("renders four quarter-finals and two semi-finals with their teams and scores", () => {
     const preliminaries = Array.from({ length: 8 }, (_, index) => ({
       ...makeMatch(),
       id: `preliminary-${index + 1}`,
       roundLabel: `Prelim ${index + 1}`,
     }));
-    const semiFinals = Array.from({ length: 4 }, (_, index) => ({
+    const quarterFinals = Array.from({ length: 4 }, (_, index) => ({
       ...makeMatch(),
-      id: `semifinal-${index + 1}`,
+      id: `quarterfinal-${index + 1}`,
       matchNumber: index + 9,
-      round: "semifinal" as const,
-      roundLabel: `Semifinal ${index + 1}`,
-      stageName: `Semifinal Match ${index + 1}`,
+      round: "quarterfinal" as const,
+      roundLabel: `Quarter-final ${index + 1}`,
+      stageName: `Quarter-final Match ${index + 1}`,
       teamA: makeTeam(20 + index * 2 + 1),
       teamB: makeTeam(20 + index * 2 + 2),
       scoreA: { content: 30, strategy: 20, style: 20, total: 70 + index },
       scoreB: { content: 25, strategy: 20, style: 20, total: 65 + index },
       court: `Court ${index + 1}`,
+    }));
+    const semiFinals = Array.from({ length: 2 }, (_, index) => ({
+      ...makeMatch(),
+      id: `semifinal-${index + 1}`,
+      matchNumber: index + 14,
+      round: "semifinal" as const,
+      roundLabel: `Semi-final ${index + 1}`,
+      stageName: `Semi-final Match ${index + 1}`,
+      teamA: makeTeam(30 + index * 2 + 1),
+      teamB: makeTeam(30 + index * 2 + 2),
+      scoreA: { content: 30, strategy: 20, style: 20, total: 80 + index },
+      scoreB: { content: 25, strategy: 20, style: 20, total: 70 + index },
+      court: `Semi-final Court ${index + 1}`,
     }));
     const final = {
       ...makeMatch(),
@@ -302,28 +378,57 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
     };
     const { container } = render(
       <TournamentBracket
-        tree={{ preliminaries, semiFinals, final }}
+        tree={{ preliminaries, quarterFinals: [...quarterFinals].reverse(), semiFinals, final }}
         onSelectMatch={vi.fn()}
         onOpenMatchModal={vi.fn()}
       />,
     );
+    const stageTabs = within(screen.getByRole("tablist")).getAllByRole("tab");
+    expect(stageTabs.map((tab) => tab.textContent)).toEqual([
+      "Prelims (8)",
+      "Quarter-finals (4)",
+      "Semi-finals (2)",
+      "Final (1)",
+    ]);
     const desktopBracket = Array.from(container.querySelectorAll("div")).find(
       (element) => element.classList.contains("hidden") && element.classList.contains("lg:block"),
     );
 
-    if (!desktopBracket) throw new Error("Desktop tournament bracket was not rendered.");
+    if (!(desktopBracket instanceof HTMLElement))
+      throw new Error("Desktop tournament bracket was not rendered.");
     const desktop = within(desktopBracket);
+    const bracketGrid = desktopBracket.children[0]?.children[1];
+    if (!(bracketGrid instanceof HTMLElement))
+      throw new Error("Tournament bracket grid was not rendered.");
+
     for (const match of preliminaries) {
       expect(desktop.getByText(match.roundLabel)).toBeInTheDocument();
     }
-    for (const match of semiFinals) {
-      expect(desktop.getByText(match.roundLabel)).toBeInTheDocument();
-      expect(desktop.getByText(match.teamA!.name)).toBeInTheDocument();
-      expect(desktop.getByText(match.teamB!.name)).toBeInTheDocument();
-      expect(desktop.getByText(String(match.scoreA!.total))).toBeInTheDocument();
-      expect(desktop.getByText(String(match.scoreB!.total))).toBeInTheDocument();
-      expect(desktop.getByText(match.court!)).toBeInTheDocument();
+    for (const match of [...quarterFinals, ...semiFinals]) {
+      const card = desktop.getByText(match.roundLabel).closest(".group");
+      if (!(card instanceof HTMLElement))
+        throw new Error(`${match.roundLabel} was not rendered as a match card.`);
+      const matchCard = within(card);
+      expect(matchCard.getByText(match.teamA!.name)).toBeInTheDocument();
+      expect(matchCard.getByText(match.teamB!.name)).toBeInTheDocument();
+      expect(matchCard.getByText(String(match.scoreA!.total))).toBeInTheDocument();
+      expect(matchCard.getByText(String(match.scoreB!.total))).toBeInTheDocument();
+      expect(matchCard.getByText(match.court!)).toBeInTheDocument();
     }
+    expect(desktop.getByText("QUARTER-FINALS · A")).toBeInTheDocument();
+    expect(desktop.getByText("SEMI-FINALS · A")).toBeInTheDocument();
+    expect(
+      within(bracketGrid.children[2] as HTMLElement).getByText("Quarter-final 1"),
+    ).toBeInTheDocument();
+    expect(
+      within(bracketGrid.children[2] as HTMLElement).getByText("Quarter-final 2"),
+    ).toBeInTheDocument();
+    expect(
+      within(bracketGrid.children[6] as HTMLElement).getByText("Quarter-final 3"),
+    ).toBeInTheDocument();
+    expect(
+      within(bracketGrid.children[6] as HTMLElement).getByText("Quarter-final 4"),
+    ).toBeInTheDocument();
     expect(desktop.getByText(final.roundLabel)).toBeInTheDocument();
   });
 
@@ -338,7 +443,7 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
     };
     const { container } = render(
       <TournamentBracket
-        tree={{ preliminaries: [], semiFinals: [match] }}
+        tree={{ preliminaries: [], quarterFinals: [], semiFinals: [match] }}
         selectedMatchId={match.id}
         onSelectMatch={vi.fn()}
         onOpenMatchModal={vi.fn()}
@@ -346,34 +451,38 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
     );
     const desktopBracket = container.querySelector(".hidden.lg\\:block");
 
-    if (!desktopBracket) throw new Error("Desktop tournament bracket was not rendered.");
+    if (!(desktopBracket instanceof HTMLElement))
+      throw new Error("Desktop tournament bracket was not rendered.");
     const desktop = within(desktopBracket);
     const roundName = desktop.getByText(match.roundLabel);
     const matchCard = roundName.closest(".group");
 
-    if (!matchCard) throw new Error("Selected match card was not rendered.");
+    if (!(matchCard instanceof HTMLElement))
+      throw new Error("Selected match card was not rendered.");
     expect(roundName.parentElement).toHaveClass("bg-ink", "text-white");
     expect(desktop.getByText(match.teamA!.name)).toHaveClass("text-white");
     expect(desktop.getByText(match.teamB!.name)).toHaveClass("text-white");
     expect(desktop.getByText(match.teamA!.name).parentElement?.parentElement).toHaveClass(
       "bg-sun/40",
     );
-    expect(
-      desktop.getByText(match.teamA!.name).parentElement?.querySelector("span"),
-    ).toHaveClass("bg-ink", "text-sun");
+    expect(desktop.getByText(match.teamA!.name).parentElement?.querySelector("span")).toHaveClass(
+      "bg-ink",
+      "text-sun",
+    );
     expect(desktop.getByText("Court 1").parentElement).toHaveClass("bg-ink", "text-white");
 
     const unselectedMatch = { ...match, id: "unselected-match" };
     const { container: unselectedContainer } = render(
       <TournamentBracket
-        tree={{ preliminaries: [], semiFinals: [unselectedMatch] }}
+        tree={{ preliminaries: [], quarterFinals: [], semiFinals: [unselectedMatch] }}
         onSelectMatch={vi.fn()}
         onOpenMatchModal={vi.fn()}
       />,
     );
     const unselectedDesktop = unselectedContainer.querySelector(".hidden.lg\\:block");
 
-    if (!unselectedDesktop) throw new Error("Desktop tournament bracket was not rendered.");
+    if (!(unselectedDesktop instanceof HTMLElement))
+      throw new Error("Desktop tournament bracket was not rendered.");
     const unselected = within(unselectedDesktop);
     expect(unselected.getByText(unselectedMatch.roundLabel).parentElement).toHaveClass(
       "group-hover:text-white",
@@ -384,12 +493,8 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
     expect(
       unselected.getByText(unselectedMatch.teamA!.name).parentElement?.querySelector("span"),
     ).toHaveClass("bg-ink", "text-sun");
-    expect(unselected.getByText(unselectedMatch.teamB!.name)).toHaveClass(
-      "group-hover:text-white",
-    );
-    expect(unselected.getByText("Court 1").parentElement).toHaveClass(
-      "group-hover:text-white",
-    );
+    expect(unselected.getByText(unselectedMatch.teamB!.name)).toHaveClass("group-hover:text-white");
+    expect(unselected.getByText("Court 1").parentElement).toHaveClass("group-hover:text-white");
   });
 
   it("reports safe-archive errors and leaves the confirmation open for resolution", async () => {
@@ -438,8 +543,6 @@ describe("DE'BAIT Supabase-backed operational UI", () => {
 
     expect(screen.getByText("AUDIENCE PULSE")).toHaveClass("!text-white");
     expect(screen.getByText(/NOTE:/).parentElement).toHaveClass("!text-white");
-    expect(screen.getByText("AUDIENCE VOTING CLOSED FOR THIS MATCH")).toHaveClass(
-      "!text-white",
-    );
+    expect(screen.getByText("AUDIENCE VOTING CLOSED FOR THIS MATCH")).toHaveClass("!text-white");
   });
 });

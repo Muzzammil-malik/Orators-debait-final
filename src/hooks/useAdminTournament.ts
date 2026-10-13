@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   Match,
+  MatchRound,
   MatchStatus,
   ScoreBreakdown,
   Team,
@@ -46,7 +47,12 @@ export function useAdminTournament() {
   const allMatches = useMemo<Match[]>(() => {
     const tree = tournamentQuery.data?.tree;
     return tree
-      ? [...tree.preliminaries, ...tree.semiFinals, ...(tree.final ? [tree.final] : [])]
+      ? [
+          ...tree.preliminaries,
+          ...tree.quarterFinals,
+          ...tree.semiFinals,
+          ...(tree.final ? [tree.final] : []),
+        ]
       : [];
   }, [tournamentQuery.data]);
   const activeMatch = useMemo(
@@ -126,6 +132,7 @@ export function useAdminTournament() {
       const current = (teamsQuery.data ?? []).find((team) => team.id === teamId);
       if (!current) return Promise.resolve({ success: false, error: "Team was not found." });
       const members = data.members ?? current.members;
+      const stream = data.stream ?? current.stream;
       if (members.length < 3 || members.length > 5) {
         return Promise.resolve({ success: false, error: "Teams must have 3 to 5 members." });
       }
@@ -134,7 +141,7 @@ export function useAdminTournament() {
           saveTeam({
             id: teamId,
             name: data.name ?? current.name,
-            stream: data.stream ?? current.stream,
+            ...(stream === undefined ? {} : { stream }),
             status: data.status ?? current.status,
             members,
           }),

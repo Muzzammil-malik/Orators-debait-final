@@ -265,6 +265,7 @@ export function Live() {
   const currentMatch = data
     ? [
         ...data.tree.preliminaries,
+        ...data.tree.quarterFinals,
         ...data.tree.semiFinals,
         ...(data.tree.final ? [data.tree.final] : []),
       ].find((match) => match.status === "live")
